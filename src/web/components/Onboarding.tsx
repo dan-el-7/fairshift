@@ -5,7 +5,7 @@ import { COPY, TITLE_ID } from './onboarding/content';
 import { HelloStep, LanguageStep, SlidesStep } from './onboarding/parts';
 import { type OnboardingMode, useOnboardingFlow } from './onboarding/flow';
 
-export { hasOnboarded, hasSeenIntro, markIntroSeen, markOnboarded } from './onboarding/storage';
+export { forgetIntro, hasOnboarded, hasSeenIntro, markIntroSeen, markOnboarded } from './onboarding/storage';
 export type { OnboardingMode };
 
 export interface OnboardingProps {

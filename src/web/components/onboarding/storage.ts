@@ -32,6 +32,15 @@ export function hasSeenIntro(role: Role): boolean {
   }
 }
 
+/** Forgets that a role's intro was seen, so it shows on the next login (demo logins replay it). Never throws. */
+export function forgetIntro(role: Role): void {
+  try {
+    window.localStorage.removeItem(introKey(role));
+  } catch {
+    // Storage blocked: hasSeenIntro is already false.
+  }
+}
+
 /** Records that a role's intro is done. Never throws. */
 export function markIntroSeen(role: Role): void {
   try {

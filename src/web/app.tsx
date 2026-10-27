@@ -146,6 +146,11 @@ export function App() {
     void ensureSession();
   }, []);
 
+  // A new login starts with no dismissed intro, so a demo login after another one still shows its tour.
+  useEffect(() => {
+    setIntroDismissed(null);
+  }, [me?.id]);
+
   // A worker's profile language wins unless they picked one themselves on this device.
   useEffect(() => {
     if (me) adoptUserLanguage(me.language);

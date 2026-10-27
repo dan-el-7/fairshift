@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/web/app';
+import { hasSeenIntro, markIntroSeen, markOnboarded } from '../../src/web/components/Onboarding';
 import { resetSessionForTests } from '../../src/web/session';
 import { mockFetch, personas, reply, worker } from './helpers';
 
@@ -51,5 +52,23 @@ describe('landing page', () => {
     await waitFor(() => expect(window.location.hash).toBe('#/w'));
     const demoCall = fetchMock.mock.calls.find(([url]) => url === '/api/auth/demo');
     expect(JSON.parse(demoCall?.[1]?.body as string)).toEqual({ personaId: 'worker-ravi' });
+  });
+
+  it('replays the role tour on a demo login, even when it was seen before', async () => {
+    markOnboarded();
+    markIntroSeen('worker');
+    mockFetch({
+      '/api/auth/personas': personas,
+      '/api/auth/demo': worker,
+      '/api/me': reply(401, { error: 'no' }),
+      '/api/attendance/me': { open: null, recent: [], fatigue: [] },
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByText('Ravi Kumar'));
+
+    await waitFor(() => expect(document.querySelector('.ob-root')).not.toBeNull());
+    expect(hasSeenIntro('worker')).toBe(false);
+    localStorage.clear();
   });
 });

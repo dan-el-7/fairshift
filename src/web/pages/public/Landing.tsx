@@ -4,6 +4,7 @@ import type { Language } from '../../../shared/types';
 import { api, errorMessage } from '../../api';
 import { Banner } from '../../components/Banner';
 import { Icon, type IconName } from '../../components/Icon';
+import { forgetIntro } from '../../components/Onboarding';
 import { Tile } from '../../components/Tile';
 import { LANGUAGE_LABEL, LANGUAGES, setLang, t, useLang } from '../../i18n';
 import { navigate } from '../../router';
@@ -50,6 +51,8 @@ export default function Landing() {
     setLoginError(null);
     try {
       const me = await api.post<Me>('/api/auth/demo', { personaId: persona.id });
+      // A demo login always shows that role's tour (still skippable), so every visitor sees it.
+      forgetIntro(me.role);
       setSession(me);
       navigate(me.role === 'admin' ? '/a' : '/w');
     } catch (err) {
