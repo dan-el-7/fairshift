@@ -217,7 +217,8 @@ Environment variables (from `src/server/config.ts` and `.env.example`):
 | `GEMINI_API_KEY` | unset | Gemini Developer API key from Google AI Studio (`GOOGLE_API_KEY` also accepted). When set, report triage uses Gemini. Takes precedence over Vertex AI. |
 | `GOOGLE_CLOUD_PROJECT` | unset | Without an API key, enables Gemini on Vertex AI (Application Default Credentials). Otherwise keyword triage is used. |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | Vertex AI region. |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model ID. |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | Gemini model ID. |
+| `GEMINI_TTS_MODEL` | picked automatically | Text-to-speech model for read-aloud on devices without a Hindi or Tamil voice. By default the server lists the models the key can use and picks a flash TTS model. |
 | `PASSPORT_PRIVATE_KEY` | derived from `SESSION_SECRET` | Ed25519 private key in PKCS8 PEM (`\n` escapes accepted). When unset, a stable key is derived from `SESSION_SECRET` with HKDF-SHA256, so passports keep verifying across instances and restarts. |
 | `VERCEL`, `K_SERVICE` | set by the platform | Vercel and Cloud Run. Their presence makes a missing `SESSION_SECRET` a startup error. |
 | `NODE_ENV` | unset | `production` (set in the Dockerfile and on Vercel) makes the session cookie Secure. |
@@ -250,7 +251,7 @@ The Cloud Run service account needs access to Firestore and Vertex AI, since bot
 
 ## Testing
 
-- **339 tests in 30 files**, run with `npm test` (Vitest).
+- **381 tests in 35 files**, run with `npm test` (Vitest).
 - **Store** (`tests/server/store`): one contract suite runs against the memory repo, the Redis repo and the Firestore repo. The Redis and Firestore runs use in-memory fakes of their clients. The suite also checks that stored reports and feedback contain no worker id, and that the demo seed is claimed once.
 - **Services and config** (`tests/server/services`, `tests/server/config.test.ts`): Gemini answers (valid, redacted, unknown category mapped to `other`, errors, timeout and malformed JSON falling back to the heuristic), audio without AI, API key and Vertex client selection, the required `SESSION_SECRET` on Vercel and Cloud Run, the derived passport key, and store selection.
 - **Domain rules** (`tests/server/domain`): payroll arithmetic, attendance hours and night overlap, the four fatigue rules, quit-risk factors, QR token windows, anonymity (case codes, PII masking, feedback aggregation and dedupe key), passports (sign and verify), time and IST day buckets, and keyword triage.

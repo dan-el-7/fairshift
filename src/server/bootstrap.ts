@@ -2,10 +2,11 @@ import type { Hono } from 'hono';
 import { createApp } from './app';
 import type { AppEnv } from './middleware/auth';
 import { loadConfig, type ServerConfig } from './config';
-import { createReportAi } from './services/ai';
+import { createGenAiClient, createReportAi } from './services/ai';
+import { createTts } from './services/tts';
 import type { Repo } from './store/repo';
 import { createMemoryRepo } from './store/memory';
-import { bufferWrites, createRedisRepo, createUpstashKv, type RedisRepo } from './store/redis';
+import { bufferWrites, createRedisRepo, createUpstashKv, type KvClient, type RedisRepo } from './store/redis';
 import { istDay } from './domain/time';
 import { seedDemo } from './store/seed';
 
@@ -29,15 +30,16 @@ export async function buildAppWithConfig(env: NodeJS.ProcessEnv = process.env, o
     console.warn('SESSION_SECRET is not set: using a random secret for this process (sessions end on restart).');
   }
 
-  const repo = await openRepo(config);
-  const ai = createReportAi({
-    geminiApiKey: config.geminiApiKey,
-    googleProject: config.googleProject,
-    googleLocation: config.googleLocation,
-    geminiModel: config.geminiModel,
-  });
+  // The Redis client is shared: the store uses it, and so does the speech cache.
+  const kv = config.store === 'redis' && config.redis ? createUpstashKv(config.redis.url, config.redis.token) : undefined;
+  const repo = await openRepo(config, kv);
 
-  const app = createApp({ repo, ai, config, webRoot: options.webRoot });
+  // One Gemini client serves both report triage and read-aloud.
+  const client = createGenAiClient(config);
+  const ai = createReportAi({ client: client ?? undefined, geminiModel: config.geminiModel });
+  const tts = client ? createTts({ client, kv, model: env.GEMINI_TTS_MODEL?.trim() || undefined }) : null;
+
+  const app = createApp({ repo, ai, tts, config, webRoot: options.webRoot });
   return { app, config };
 }
 
@@ -47,11 +49,9 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env, options: Bu
 }
 
 /** Opens the configured store and seeds the demo organisation when it is empty. */
-async function openRepo(config: ServerConfig): Promise<Repo> {
+async function openRepo(config: ServerConfig, kv: KvClient | undefined): Promise<Repo> {
   if (config.store === 'redis') {
-    const redis = config.redis;
-    if (!redis) throw new Error('STORE=redis needs a Redis endpoint');
-    const kv = createUpstashKv(redis.url, redis.token);
+    if (!kv) throw new Error('STORE=redis needs a Redis endpoint');
     const repo: RedisRepo = createRedisRepo(kv);
     // The demo's shifts are generated relative to "today", so the shared demo refreshes once per
     // IST day; otherwise dashboards would show stale attendance a few days after deployment.

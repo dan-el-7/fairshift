@@ -12,13 +12,17 @@ import { feedbackRoutes } from './routes/feedback';
 import { passportRoutes } from './routes/passport';
 import { payRoutes } from './routes/pay';
 import { reportRoutes } from './routes/reports';
+import { ttsRoutes } from './routes/tts';
 import type { ReportAI } from './services/ai';
+import type { Tts } from './services/tts';
 import type { Repo } from './store/repo';
 
 /** Everything route handlers need. Injected so tests can use a memory repo, a fake AI and a fixed clock. */
 export interface Deps {
   repo: Repo;
   ai: ReportAI;
+  /** Read-aloud audio. Null when no speech service is configured: the route answers 503. */
+  tts: Tts | null;
   config: AppConfig;
   now: () => Date;
 }
@@ -26,6 +30,8 @@ export interface Deps {
 export interface AppDeps {
   repo: Repo;
   ai: ReportAI;
+  /** Read-aloud audio. Omitted or null when no speech service is configured. */
+  tts?: Tts | null;
   config: AppConfig;
   /** Clock. Defaults to the real time. */
   now?: () => Date;
@@ -43,6 +49,7 @@ export function createApp(input: AppDeps): Hono<AppEnv> {
   const deps: Deps = {
     repo: input.repo,
     ai: input.ai,
+    tts: input.tts ?? null,
     config: input.config,
     now: input.now ?? (() => new Date()),
   };
@@ -58,6 +65,7 @@ export function createApp(input: AppDeps): Hono<AppEnv> {
   app.use('/api/*', rateLimit({ name: 'api', limit: 60, windowMs: MINUTE_MS, now: deps.now }));
   app.use('/api/reports', rateLimit({ name: 'report', limit: 10, windowMs: MINUTE_MS, now: deps.now }));
   app.use('/api/feedback', rateLimit({ name: 'feedback', limit: 10, windowMs: MINUTE_MS, now: deps.now }));
+  app.use('/api/tts', rateLimit({ name: 'tts', limit: 30, windowMs: MINUTE_MS, now: deps.now }));
   app.use('/api/*', sessionMiddleware(deps.config.sessionSecret, deps.now));
 
   app.get('/api/health', (c) => c.json({ ok: true }));
@@ -67,6 +75,7 @@ export function createApp(input: AppDeps): Hono<AppEnv> {
   app.route('/api', reportRoutes(deps));
   app.route('/api', feedbackRoutes(deps));
   app.route('/api', passportRoutes(deps));
+  app.route('/api', ttsRoutes(deps));
   app.route('/api', adminRoutes(deps));
 
   if (input.webRoot) {

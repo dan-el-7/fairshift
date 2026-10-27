@@ -33,7 +33,7 @@ Server serves the built SPA from `dist/web` and the API under `/api`. Port from 
 | `STORE` | `memory` | `memory` or `firestore` |
 | `GOOGLE_CLOUD_PROJECT` | – | enables Vertex AI when set |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | Vertex region |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | model id |
+| `GEMINI_MODEL` | `gemini-3.8-flash` | model id |
 | `PASSPORT_PRIVATE_KEY` | generated per boot | Ed25519 PKCS8 PEM for signing skill passports |
 
 On Cloud Run, Vertex/Firestore authenticate via the service account (ADC) — **no API keys**.

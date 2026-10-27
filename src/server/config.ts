@@ -90,7 +90,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     geminiApiKey,
     googleProject: project,
     googleLocation: env.GOOGLE_CLOUD_LOCATION?.trim() || 'us-central1',
-    geminiModel: env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
+    geminiModel: env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
     passport: loadPassportKeys(env.PASSPORT_PRIVATE_KEY, secretGenerated ? undefined : sessionSecret),
   };
 }
