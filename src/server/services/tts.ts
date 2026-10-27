@@ -28,7 +28,7 @@ const KV_MAX_BASE64 = 900_000;
 const MEMORY_CACHE_MAX = 100;
 const DEFAULT_RATE = 24_000;
 /** Bumped when the prompt changes, so clips made with an old prompt are never served. */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 
 /** Wraps raw 16-bit little-endian PCM in a RIFF/WAVE header. The header is 44 bytes. */
 export function pcmToWav(pcm: Uint8Array, sampleRate: number, channels = 1, bitsPerSample = 16): Uint8Array {
@@ -53,6 +53,27 @@ export function pcmToWav(pcm: Uint8Array, sampleRate: number, channels = 1, bits
   view.setUint32(40, pcm.length, true);
   out.set(pcm, 44);
   return out;
+}
+
+const JUMB = [0x6a, 0x75, 0x6d, 0x62]; // 'jumb'
+const JUMD = [0x6a, 0x75, 0x6d, 0x64]; // 'jumd'
+const C2PA = [0x43, 0x32, 0x50, 0x41]; // 'C2PA'
+
+/**
+ * Gemini appends a C2PA provenance manifest to the end of the raw PCM: an optional 'C2PA' chunk
+ * header (tag and size), then a JUMBF box (size, 'jumb', size, 'jumd'). Played as audio it is a
+ * burst of static at the end of the clip, so the PCM is cut there and the speech before it kept.
+ */
+export function stripProvenance(pcm: Uint8Array): Uint8Array {
+  const matches = (at: number, tag: number[]) => tag.every((b, i) => pcm[at + i] === b);
+  for (let i = 4; i + 12 <= pcm.length; i++) {
+    if (matches(i, JUMB) && matches(i + 8, JUMD)) {
+      let end = i - 4;
+      if (end >= 8 && matches(end - 8, C2PA)) end -= 8;
+      return pcm.subarray(0, end - (end % 2));
+    }
+  }
+  return pcm;
 }
 
 /** Sample rate from a MIME type such as 'audio/L16;codec=pcm;rate=24000'. */
@@ -135,7 +156,7 @@ export function createTts(options: TtsOptions): Tts {
     );
     const inline = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
     if (!inline?.data) throw new Error('no audio in the response');
-    return pcmToWav(new Uint8Array(Buffer.from(inline.data, 'base64')), sampleRateOf(inline.mimeType));
+    return pcmToWav(stripProvenance(new Uint8Array(Buffer.from(inline.data, 'base64'))), sampleRateOf(inline.mimeType));
   }
 
   return {

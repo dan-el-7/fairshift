@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GenAiClient } from '../../../src/server/services/ai';
-import { createTts, pcmToWav, TTS_MAX_CHARS } from '../../../src/server/services/tts';
+import { createTts, pcmToWav, stripProvenance, TTS_MAX_CHARS } from '../../../src/server/services/tts';
 import type { KvClient } from '../../../src/server/store/redis';
 
 const ascii = (bytes: Uint8Array, from: number, length: number) => String.fromCharCode(...bytes.slice(from, from + length));
@@ -79,6 +79,27 @@ describe('pcmToWav', () => {
     expect(ascii(wav, 36, 4)).toBe('data');
     expect(view.getUint32(40, true)).toBe(PCM.length);
     expect(Array.from(wav.slice(44))).toEqual(Array.from(PCM));
+  });
+});
+
+describe('stripProvenance', () => {
+  const tag = (s: string) => [...s].map((c) => c.charCodeAt(0));
+
+  it('cuts the C2PA manifest Gemini appends, so it is not played as static', () => {
+    const audio = [1, 2, 3, 4, 5, 6];
+    const manifest = [0, 0, 0, 40, ...tag('jumb'), 0, 0, 0, 30, ...tag('jumd'), ...tag('c2pa')];
+    expect([...stripProvenance(new Uint8Array([...audio, ...manifest]))]).toEqual(audio);
+  });
+
+  it('also cuts the C2PA chunk header in front of the manifest', () => {
+    const audio = [1, 2, 3, 4];
+    const trailer = [...tag('C2PA'), 0x20, 0, 0, 0, 0, 0, 0, 0x20, ...tag('jumb'), 0, 0, 0, 9, ...tag('jumd')];
+    expect([...stripProvenance(new Uint8Array([...audio, ...trailer]))]).toEqual(audio);
+  });
+
+  it('leaves audio without a manifest unchanged', () => {
+    const pcm = new Uint8Array([...tag('jumb'), 9, 9, 9, 9, 1, 2]);
+    expect(stripProvenance(pcm)).toBe(pcm);
   });
 });
 
