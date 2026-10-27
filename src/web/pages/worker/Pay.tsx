@@ -119,6 +119,11 @@ export default function Pay({ me }: { me: Me }) {
               <span>{t('pay.net')}</span>
               <span class="money-net">{formatMoney(slip.net)}</span>
             </div>
+            <hr class="net-divider" />
+            <button type="button" class="btn btn-block net-read" onClick={() => speak(payslipSpeech(slip, payModel), lang)}>
+              <Icon name="speaker" size={20} />
+              {t('pay.readAll')}
+            </button>
           </section>
 
           <section class="card receipt" aria-labelledby="period-title">
@@ -149,10 +154,6 @@ export default function Pay({ me }: { me: Me }) {
             </section>
           </section>
 
-          <button type="button" class="btn btn-block" onClick={() => speak(payslipSpeech(slip, payModel), lang)}>
-            <Icon name="speaker" size={20} />
-            {t('pay.readAll')}
-          </button>
         </>
       ) : null}
     </div>

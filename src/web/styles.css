@@ -1224,6 +1224,23 @@ legend {
   gap: 4px;
   font-weight: 600;
 }
+.net-divider {
+  margin: var(--space-4) 0 var(--space-3);
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+/* Read-aloud inside the net-pay card: translucent white on the indigo gradient. */
+.net-panel .net-read {
+  min-height: 44px;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  color: #ffffff;
+}
+.net-panel .net-read:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.18);
+}
 .money-net {
   font-size: clamp(1.75rem, 8vw, 2.25rem);
   font-weight: 700;
