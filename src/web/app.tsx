@@ -124,7 +124,7 @@ export function App() {
               <path d="M5.5 12.5l4.2 4.2L18.5 7.5" />
             </svg>
           </span>
-          <span>{t('app.name')}</span>
+          <span class="brand-name">{t('app.name')}</span>
         </a>
         <div class="header-actions">
           <LanguageHelpButton />

@@ -71,6 +71,14 @@ export function createApp(input: AppDeps): Hono<AppEnv> {
 
   if (input.webRoot) {
     const root = input.webRoot;
+    // Hashed build assets never change, so cache them for a year. Everything else (index.html,
+    // sw.js, manifest) must revalidate so a new deploy reaches users immediately.
+    app.use('*', async (c, next) => {
+      await next();
+      if (c.req.path.startsWith('/api/') || c.res.headers.has('cache-control')) return;
+      const immutable = c.req.path.startsWith('/assets/') && c.res.status === 200;
+      c.header('Cache-Control', immutable ? 'public, max-age=31536000, immutable' : 'no-cache');
+    });
     app.use('*', serveStatic({ root }));
     app.get('*', async (c) => {
       if (c.req.path.startsWith('/api/')) return c.json({ error: 'not found' }, 404);

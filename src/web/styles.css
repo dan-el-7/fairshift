@@ -1736,3 +1736,18 @@ legend {
     text-align: center;
   }
 }
+
+/* Narrow phones: the trilingual language button needs the room; the logo mark stays. */
+@media (max-width: 440px) {
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .header-actions {
+    gap: 6px;
+  }
+}
