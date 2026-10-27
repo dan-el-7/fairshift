@@ -3,6 +3,8 @@ import type { Language } from '../shared/types';
 import en from './i18n/en.json';
 import hi from './i18n/hi.json';
 import ta from './i18n/ta.json';
+import { hasExplicitChoice, initialLanguage } from './langDetect';
+import { PREF, writePref } from './prefs';
 
 /** Every UI key. hi/ta must provide the same keys (enforced by the type below and by tests). */
 export type TKey = keyof typeof en;
@@ -15,23 +17,15 @@ export const LANGUAGES: Language[] = ['en', 'hi', 'ta'];
 export const LANGUAGE_LABEL: Record<Language, string> = { en: 'English', hi: 'हिन्दी', ta: 'தமிழ்' };
 export const LOCALE_TAG: Record<Language, string> = { en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN' };
 
-const STORAGE_KEY = 'fairshift.lang';
 const IST = 'Asia/Kolkata';
 
 function isLanguage(value: unknown): value is Language {
   return value === 'en' || value === 'hi' || value === 'ta';
 }
 
-function readStored(): Language | null {
-  try {
-    const value = window.localStorage.getItem(STORAGE_KEY);
-    return isLanguage(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-let current: Language = readStored() ?? 'en';
+/** True once the user has picked a language on this page load (covers blocked storage). */
+let explicitThisSession = false;
+let current: Language = initialLanguage();
 const listeners = new Set<() => void>();
 
 function applyDocumentLang(): void {
@@ -43,16 +37,30 @@ export function getLang(): Language {
   return current;
 }
 
-export function setLang(lang: Language): void {
-  if (!isLanguage(lang) || lang === current) return;
-  current = lang;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, lang);
-  } catch {
-    // Storage can be blocked (private mode). The choice then lasts for this page only.
+export interface SetLangOptions {
+  /** Default true: a choice the user made, which is saved. Pass false for automatic switches, which are not saved. */
+  explicit?: boolean;
+}
+
+export function setLang(lang: Language, { explicit = true }: SetLangOptions = {}): void {
+  if (!isLanguage(lang)) return;
+  if (explicit) {
+    explicitThisSession = true;
+    writePref(PREF.language, lang);
   }
+  if (lang === current) return;
+  current = lang;
   applyDocumentLang();
   listeners.forEach((fn) => fn());
+}
+
+/**
+ * Switches to the logged-in worker's profile language, unless the user has explicitly chosen one.
+ * Automatic switches are not saved, so a later visit still starts from the browser language.
+ */
+export function adoptUserLanguage(lang: Language): void {
+  if (explicitThisSession || hasExplicitChoice()) return;
+  setLang(lang, { explicit: false });
 }
 
 /** Re-renders the calling component when the UI language changes. */
@@ -67,6 +75,15 @@ export function useLang(): Language {
     };
   }, []);
   return lang;
+}
+
+/** Translate a key in a given language, whatever the UI language is. Used for text that stays in its own language. */
+export function tIn(lang: Language, key: TKey, params?: Params): string {
+  const template: string = DICTS[lang][key] ?? DICTS.en[key] ?? key;
+  if (!params) return template;
+  return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+    name in params ? String(params[name]) : match,
+  );
 }
 
 /** Translate a key in the current language, falling back to English, then to the key. */

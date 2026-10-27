@@ -57,7 +57,7 @@ function ReportItem({ report, onUpdated }: ReportItemProps) {
   });
 
   return (
-    <li id={`report-${report.id}`}>
+    <li id={`report-${report.id}`} class={`report-card sev-${report.severity}`}>
       <div class="row">
         <code class="report-code">{report.caseCode}</code>
         <SeverityBadge severity={report.severity} />

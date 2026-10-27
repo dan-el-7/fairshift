@@ -1,14 +1,55 @@
 import { useState } from 'preact/hooks';
+import { LanguageNudge } from '../../components/LanguageNudge';
 import type { CreateReportRequest, CreateReportResponse, Me } from '../../../shared/api';
 import { INDUSTRIES } from '../../../shared/industries';
 import { api } from '../../api';
 import { Banner } from '../../components/Banner';
-import { Icon } from '../../components/Icon';
+import { Icon, type IconName } from '../../components/Icon';
 import { SpeakButton } from '../../components/SpeakButton';
 import { copyText } from '../../clipboard';
 import { t, type TKey, useLang } from '../../i18n';
 import { navigate } from '../../router';
 import { canRecord, recordAudio, type Recording } from '../../speech';
+
+/** A picture for each hazard category. Unknown categories get the generic alert icon. */
+const CATEGORY_ICON: Partial<Record<string, IconName>> = {
+  fall_height: 'hardhat',
+  scaffolding: 'hardhat',
+  electrical: 'bolt',
+  heavy_machinery: 'alert',
+  ppe_missing: 'shield',
+  heat_stress: 'flame',
+  harassment: 'user',
+  wage_issue: 'pay',
+  fire_safety: 'flame',
+  workload: 'clock',
+  other: 'help',
+};
+
+/** Three visible steps: 1 category, 2 describe, 3 done. Presentation only. */
+function Steps({ current }: { current: 1 | 2 | 3 }) {
+  const items: Array<{ key: TKey }> = [{ key: 'report.whatWrong' }, { key: 'report.describe' }, { key: 'report.caseCode' }];
+  return (
+    <ol class="steps" aria-label={t('report.title')}>
+      {items.map((item, index) => {
+        const n = index + 1;
+        const state = n === current ? 'current' : n < current ? 'done' : undefined;
+        return (
+          <li
+            key={item.key}
+            class={state === 'done' ? 'is-done' : undefined}
+            aria-current={state === 'current' ? 'step' : undefined}
+          >
+            <span class="step-num" aria-hidden="true">
+              {n}
+            </span>
+            <span>{t(item.key)}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 export default function Report({ me }: { me: Me }) {
   const lang = useLang();
@@ -78,20 +119,19 @@ export default function Report({ me }: { me: Me }) {
     return (
       <section class="card stack" aria-labelledby="sent-title">
         <h1 id="sent-title">{t('report.received')}</h1>
-        <p>{t('report.caseCode')}</p>
-        <p class="case-code" aria-label={result.caseCode}>
-          {result.caseCode}
-        </p>
-        <div class="row">
-          <button
-            type="button"
-            class="btn btn-primary"
-            onClick={async () => setCopied(await copyText(result.caseCode))}
-          >
-            <Icon name="copy" size={22} />
-            {t('report.copyCode')}
-          </button>
-          {copied ? <span role="status">{t('common.copied')}</span> : null}
+        <Steps current={3} />
+        <div class="ticket">
+          <p>{t('report.caseCode')}</p>
+          <p class="case-code" aria-label={result.caseCode}>
+            {result.caseCode}
+          </p>
+          <div class="row">
+            <button type="button" class="btn btn-primary" onClick={async () => setCopied(await copyText(result.caseCode))}>
+              <Icon name="copy" size={20} />
+              {t('report.copyCode')}
+            </button>
+            {copied ? <span role="status">{t('common.copied')}</span> : null}
+          </div>
         </div>
         <Banner tone="warn">
           <p>{t('report.saveCode')}</p>
@@ -101,11 +141,9 @@ export default function Report({ me }: { me: Me }) {
         </div>
         <div class="row">
           <button type="button" class="btn" onClick={() => navigate(`/track?code=${encodeURIComponent(result.caseCode)}`)}>
-            <Icon name="track" size={22} />
+            <Icon name="track" size={20} />
             {t('report.track')}
           </button>
-        </div>
-        <div class="row">
           <button
             type="button"
             class="btn"
@@ -122,32 +160,39 @@ export default function Report({ me }: { me: Me }) {
     );
   }
 
+  const step: 1 | 2 = category === null && !text.trim() && !audio ? 1 : 2;
+
   return (
     <form class="stack" onSubmit={submit} aria-labelledby="report-title">
       <h1 id="report-title">{t('report.title')}</h1>
-      <Banner tone="info">
+      <Steps current={step} />
+
+      <div class="notice-anon">
+        <Icon name="shield" size={24} />
         <p>{t('report.anonymous')}</p>
-      </Banner>
+      </div>
       <div class="row">
         <SpeakButton text={t('report.anonymous')} />
       </div>
 
       <fieldset class="stack">
-        <legend class="field-label">{t('report.whatWrong')}</legend>
-        <div class="chips">
+        <legend>{t('report.whatWrong')}</legend>
+        <div class="choice-grid">
           {categories.map((code) => (
             <button
               key={code}
               type="button"
-              class="chip"
+              class="choice"
               aria-pressed={category === code}
               onClick={() => setCategory(code)}
             >
-              {t(`hazard.${code}` as TKey)}
+              <Icon name={CATEGORY_ICON[code] ?? 'alert'} size={24} />
+              <span>{t(`hazard.${code}` as TKey)}</span>
             </button>
           ))}
-          <button type="button" class="chip" aria-pressed={category === null} onClick={() => setCategory(null)}>
-            {t('report.notSure')}
+          <button type="button" class="choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
+            <Icon name="help" size={24} />
+            <span>{t('report.notSure')}</span>
           </button>
         </div>
       </fieldset>
@@ -163,22 +208,21 @@ export default function Report({ me }: { me: Me }) {
           value={text}
           onInput={(event) => setText((event.currentTarget as HTMLTextAreaElement).value)}
         />
+        <LanguageNudge text={text} />
       </div>
 
       {voice ? (
-        <div class="stack">
+        <div class="voice">
+          <button
+            type="button"
+            class={`mic-btn${recording ? ' is-recording' : ''}`}
+            aria-label={recording ? t('report.voiceStop') : t('report.voiceStart')}
+            onClick={() => (recording ? void stopVoice() : void startVoice())}
+          >
+            <Icon name={recording ? 'stop' : 'mic'} size={40} />
+          </button>
           <div class="row">
-            {recording ? (
-              <button type="button" class="btn" onClick={() => void stopVoice()}>
-                <Icon name="stop" size={22} />
-                {t('report.voiceStop')}
-              </button>
-            ) : (
-              <button type="button" class="btn" onClick={() => void startVoice()}>
-                <Icon name="mic" size={22} />
-                {t('report.voiceStart')}
-              </button>
-            )}
+            <span class="muted">{recording ? t('report.voiceStop') : t('report.voiceStart')}</span>
             <SpeakButton text={recording ? t('report.voiceStop') : t('report.voiceStart')} />
           </div>
           {recording ? <p class="muted">{t('report.voiceLimit')}</p> : null}
@@ -188,12 +232,10 @@ export default function Report({ me }: { me: Me }) {
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
 
-      <div class="row">
-        <button type="submit" class="btn btn-primary btn-block" disabled={busy || recording !== null}>
-          <Icon name="send" size={22} />
-          {busy ? t('common.submitting') : t('report.submit')}
-        </button>
-      </div>
+      <button type="submit" class="btn btn-primary btn-block" disabled={busy || recording !== null}>
+        <Icon name="send" size={20} />
+        {busy ? t('common.submitting') : t('report.submit')}
+      </button>
     </form>
   );
 }

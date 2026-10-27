@@ -26,12 +26,23 @@ const PATHS = {
   clock: [circle(12, 12, 9), 'M12 7v5l3 2'],
   user: [circle(12, 8, 4), 'M4 21a8 8 0 0 1 16 0'],
   globe: [circle(12, 12, 9), 'M3 12h18', 'M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18'],
+  grid: ['M4 4h7v7H4z', 'M13 4h7v7h-7z', 'M4 13h7v7H4z', 'M13 13h7v7h-7z'],
+  users: [circle(9, 8, 3.5), 'M2.5 20a6.5 6.5 0 0 1 13 0', 'M16 4.5a3.5 3.5 0 0 1 0 7', 'M18 14a6.5 6.5 0 0 1 3.5 6'],
+  file: ['M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z', 'M14 3v6h6', 'M8 13h8', 'M8 17h8'],
+  hardhat: ['M3 17a9 9 0 0 1 18 0', 'M2 17h20', 'M5 17v2h14v-2', 'M12 8V5'],
+  cap: ['M2 9l10-5 10 5-10 5z', 'M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5', 'M22 9v6'],
+  shield: ['M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'],
+  chevron: ['M9 6l6 6-6 6'],
+  bolt: ['M13 2L4 14h7l-1 8 9-12h-7z'],
+  flame: ['M12 22c4 0 7-3 7-7 0-4-3-6-4-10-2 2-2 4-3 5-1-2-1-5 0-7-4 3-7 6-7 12 0 4 3 7 7 7z'],
+  help: [circle(12, 12, 9), 'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7', 'M12 17.5v.5'],
+  chart: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M2 20h20'],
 } as const;
 
 export type IconName = keyof typeof PATHS;
 
-/** Small inline line icon. Decorative only: always pair it with visible text. */
-export function Icon({ name, size = 28 }: { name: IconName; size?: number }) {
+/** Small inline line icon (stroke 1.75). Decorative only: always pair it with visible text. Use 20 or 24. */
+export function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
   return (
     <svg
       class="icon"
@@ -40,7 +51,7 @@ export function Icon({ name, size = 28 }: { name: IconName; size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
+      stroke-width="1.75"
       stroke-linecap="round"
       stroke-linejoin="round"
       aria-hidden="true"

@@ -1,3 +1,4 @@
+import { LanguageNudge } from '../../components/LanguageNudge';
 import { useState } from 'preact/hooks';
 import type { FeedbackRequest, Me } from '../../../shared/api';
 import type { FeedbackRatings } from '../../../shared/types';
@@ -115,6 +116,7 @@ export default function Feedback(_props: { me: Me }) {
           value={comment}
           onInput={(event) => setComment((event.currentTarget as HTMLTextAreaElement).value)}
         />
+        <LanguageNudge text={comment} />
       </div>
 
       {error ? <Banner tone="danger">{error}</Banner> : null}

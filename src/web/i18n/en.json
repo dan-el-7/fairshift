@@ -271,5 +271,13 @@
   "admin.feedback.outOf": "{score} out of 5",
   "admin.speech.summary": "{present} of {workers} workers present today. {openReports} open reports, {overdueReports} overdue. {fatigue} fatigue alerts. {highRisk} workers at high risk of leaving.",
   "admin.speech.report": "{category}. Priority {severity}. Status {status}. {text}",
-  "admin.speech.feedback": "{safety} out of 5 for safety. {fairness} out of 5 for fairness. {respect} out of 5 for respect. {workload} out of 5 for workload."
+  "admin.speech.feedback": "{safety} out of 5 for safety. {fairness} out of 5 for fairness. {respect} out of 5 for respect. {workload} out of 5 for workload.",
+  "common.close": "Close",
+  "lang.hear": "Hear this language name",
+  "textSize.label": "Larger text",
+  "offline.message": "You are offline. Your last data is shown; actions will need the internet.",
+  "nudge.text": "You seem to be writing in {language}. Switch the app to {language}?",
+  "nudge.switch": "Switch",
+  "nudge.notNow": "Not now",
+  "landing.replayIntro": "Watch the welcome tour"
 }

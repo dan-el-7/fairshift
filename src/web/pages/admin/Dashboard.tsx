@@ -1,6 +1,7 @@
 import type { AdminOverview, WorkerSummary } from '../../../shared/api';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { SeverityBadge } from '../../components/Badge';
+import { Icon, type IconName } from '../../components/Icon';
 import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { t, type TKey } from '../../i18n';
@@ -35,6 +36,10 @@ function AttendanceChart({ series }: { series: Series }) {
       aria-label={t('admin.chart.label')}
       focusable="false"
     >
+      {[0.25, 0.5, 0.75, 1].map((fraction) => {
+        const y = PAD_TOP + plotHeight - plotHeight * fraction;
+        return <line key={fraction} class="chart-grid" x1={PAD_X} x2={CHART_W - PAD_X} y1={y} y2={y} />;
+      })}
       {series.map((point, index) => {
         const height = (point.present / max) * plotHeight;
         const x = PAD_X + index * slot + (slot - barWidth) / 2;
@@ -55,9 +60,12 @@ function AttendanceChart({ series }: { series: Series }) {
   );
 }
 
-function Kpi({ label, value }: { label: string; value: number | string }) {
+function Kpi({ label, value, icon }: { label: string; value: number | string; icon: IconName }) {
   return (
     <div class="card kpi">
+      <span class="kpi-icon" aria-hidden="true">
+        <Icon name={icon} size={20} />
+      </span>
       <span class="kpi-label">{label}</span>
       <strong class="kpi-value">{value}</strong>
     </div>
@@ -156,13 +164,13 @@ export default function Dashboard() {
           <p class="muted">{t('home.site', { site: data.site.name })}</p>
 
           <div class="kpi-grid">
-            <Kpi label={t('admin.kpi.workers')} value={data.kpis.workers} />
-            <Kpi label={t('admin.kpi.presentToday')} value={data.kpis.presentToday} />
-            <Kpi label={t('admin.kpi.overtime14d')} value={data.kpis.overtimeHours14d} />
-            <Kpi label={t('admin.kpi.openReports')} value={data.kpis.openReports} />
-            <Kpi label={t('admin.kpi.overdueReports')} value={data.kpis.overdueReports} />
-            <Kpi label={t('admin.kpi.fatigueAlerts')} value={data.kpis.fatigueAlerts} />
-            <Kpi label={t('admin.kpi.highRiskWorkers')} value={data.kpis.highRiskWorkers} />
+            <Kpi label={t('admin.kpi.workers')} value={data.kpis.workers} icon="users" />
+            <Kpi label={t('admin.kpi.presentToday')} value={data.kpis.presentToday} icon="checkin" />
+            <Kpi label={t('admin.kpi.overtime14d')} value={data.kpis.overtimeHours14d} icon="clock" />
+            <Kpi label={t('admin.kpi.openReports')} value={data.kpis.openReports} icon="file" />
+            <Kpi label={t('admin.kpi.overdueReports')} value={data.kpis.overdueReports} icon="alert" />
+            <Kpi label={t('admin.kpi.fatigueAlerts')} value={data.kpis.fatigueAlerts} icon="bolt" />
+            <Kpi label={t('admin.kpi.highRiskWorkers')} value={data.kpis.highRiskWorkers} icon="chart" />
           </div>
 
           <section class="card stack" aria-labelledby="chart-title">

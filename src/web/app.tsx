@@ -1,16 +1,20 @@
 import type { VNode } from 'preact';
 import { lazy, Suspense } from 'preact/compat';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Me } from '../shared/api';
+import { Icon } from './components/Icon';
 import { Spinner } from './components/Spinner';
-import { LANGUAGE_LABEL, LANGUAGES, setLang, t, useLang } from './i18n';
-import { type Route, useRoute } from './router';
+import { LanguageHelpButton } from './components/LanguageSheet';
+import { OfflineBanner } from './components/OfflineBanner';
+import { hasOnboarded, Onboarding } from './components/Onboarding';
+import { TextSizeToggle } from './components/TextSizeToggle';
+import { adoptUserLanguage, t, useLang } from './i18n';
+import { navigate, type Route, useRoute } from './router';
 import { ensureSession, logout, useSession } from './session';
 import { WorkerShell } from './pages/worker/WorkerShell';
 import Landing from './pages/public/Landing';
 import Track from './pages/public/Track';
 import Verify from './pages/public/Verify';
-import type { Language } from '../shared/types';
 
 // Worker pages and the admin area are split into their own chunks to keep the first load small.
 const AdminPage = lazy(() => import('./pages/admin/index'));
@@ -62,6 +66,7 @@ function Routes({ route }: { route: Route }) {
   if (root === 'a') return <AdminPage path={route.path} />;
   if (root === 'track') return <Track />;
   if (root === 'verify') return <Verify />;
+  if (root === 'welcome') return <Landing />;
   return <NotFound />;
 }
 
@@ -70,10 +75,19 @@ export function App() {
   const route = useRoute();
   const me = useSession();
   const mainRef = useRef<HTMLElement>(null);
+  const root = route.path.split('/').filter(Boolean)[0];
+
+  const [onboarding, setOnboarding] = useState(() => !hasOnboarded());
+  const showOnboarding = onboarding || root === 'welcome';
 
   useEffect(() => {
     void ensureSession();
   }, []);
+
+  // A worker's profile language wins unless they picked one themselves on this device.
+  useEffect(() => {
+    if (me) adoptUserLanguage(me.language);
+  }, [me?.id]);
 
   useEffect(() => {
     document.title = t('app.name');
@@ -89,6 +103,8 @@ export function App() {
     mainRef.current?.focus();
   }, [route.path]);
 
+  const mainClass = [root === 'a' ? 'main-wide' : '', root === 'w' ? 'has-bottom-nav' : ''].filter(Boolean).join(' ');
+
   return (
     <>
       <a
@@ -103,32 +119,34 @@ export function App() {
       </a>
       <header class="app-header">
         <a class="brand" href="#/">
-          {t('app.name')}
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+              <path d="M5.5 12.5l4.2 4.2L18.5 7.5" />
+            </svg>
+          </span>
+          <span>{t('app.name')}</span>
         </a>
         <div class="header-actions">
-          <label class="visually-hidden" for="lang-select">
-            {t('app.langLabel')}
-          </label>
-          <select
-            id="lang-select"
-            class="lang-select"
-            value={lang}
-            onChange={(event) => setLang((event.currentTarget as HTMLSelectElement).value as Language)}
-          >
-            {LANGUAGES.map((code) => (
-              <option key={code} value={code} lang={code}>
-                {LANGUAGE_LABEL[code]}
-              </option>
-            ))}
-          </select>
+          <LanguageHelpButton />
+          <TextSizeToggle />
           {me ? (
-            <button type="button" class="btn btn-small" onClick={() => void logout()}>
-              {t('nav.logout')}
+            <button type="button" class="btn btn-ghost btn-small" onClick={() => void logout()}>
+              <Icon name="logout" size={20} />
+              <span class="collapse-sm">{t('nav.logout')}</span>
             </button>
           ) : null}
         </div>
       </header>
-      <main id="main" ref={mainRef} tabIndex={-1}>
+      {showOnboarding ? (
+        <Onboarding
+          onDone={() => {
+            setOnboarding(false);
+            if (root === 'welcome') navigate('/');
+          }}
+        />
+      ) : null}
+      <main id="main" ref={mainRef} tabIndex={-1} class={mainClass || undefined}>
+        <OfflineBanner />
         <Suspense fallback={<Spinner />}>
           <Routes route={route} />
         </Suspense>

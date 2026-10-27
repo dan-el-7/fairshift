@@ -6,6 +6,23 @@ export function canSpeak(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 }
 
+/**
+ * Whether a voice for this language is installed, so the UI can hide read-aloud when there is none.
+ * Returns true while the device has not listed any voices yet (browsers load them late), so
+ * read-aloud is not hidden by mistake.
+ */
+export function voicesAvailable(lang: Language): boolean {
+  if (!canSpeak()) return false;
+  try {
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length === 0) return true;
+    const tag = TAGS[lang];
+    return voices.some((v) => v.lang === tag || v.lang.startsWith(lang));
+  } catch {
+    return false;
+  }
+}
+
 /** Read text aloud in the given language. Does nothing when speech synthesis is unavailable. */
 export function speak(text: string, lang: Language): void {
   if (!canSpeak() || !text.trim()) return;

@@ -102,15 +102,24 @@ function QrScanner({ onCode, onFail }: { onCode: (value: string) => void; onFail
   return <video ref={videoRef} class="scanner" playsInline muted autoPlay />;
 }
 
+/** The check-in methods. Each keeps its existing behaviour; the segmented control only chooses which one is shown. */
+type Mode = 'scan' | 'code' | 'geo';
+
 export default function Attendance({ me }: { me: Me }) {
   const attendance = useApiData<AttendanceMe>('/api/attendance/me');
   const [scanning, setScanning] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: BannerTone; text: string } | null>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
 
   const config = INDUSTRIES[me.site.industry];
   const canScan = scannerSupport() !== null;
+  const modes: Mode[] = [
+    ...(config.checkInModes.includes('qr') ? (['scan', 'code'] as Mode[]) : []),
+    ...(config.checkInModes.includes('geo') ? (['geo'] as Mode[]) : []),
+  ];
+  const [mode, setMode] = useState<Mode>(modes[0] ?? 'geo');
   const open = attendance.data?.open ?? null;
 
   function checkInError(err: unknown, byQr: boolean): string {
@@ -159,7 +168,35 @@ export default function Attendance({ me }: { me: Me }) {
     await checkIn(position);
   }
 
-  const openText = open ? t('attendance.openSince', { time: formatTime(open.checkIn) }) : '';
+  /** The big button: check out when open, otherwise start the check-in method currently selected. */
+  function heroPress() {
+    if (open) {
+      void checkOut();
+      return;
+    }
+    if (mode === 'scan') {
+      if (canScan) setScanning(true);
+      else setMode('code');
+      return;
+    }
+    if (mode === 'geo') {
+      void checkInByLocation();
+      return;
+    }
+    if (code.trim()) {
+      void checkIn({ qrToken: tokenFromScan(code) });
+    } else {
+      codeRef.current?.focus();
+    }
+  }
+
+  const openText = open ? t('attendance.openSince', { time: formatTime(open.checkIn) }) : t('home.notCheckedIn');
+  const modeLabel: Record<Mode, string> = {
+    scan: t('attendance.scanQr'),
+    code: t('attendance.codeLabel'),
+    geo: t('attendance.useLocation'),
+  };
+  const heroLabel = open ? t('attendance.checkOut') : t('attendance.checkIn');
 
   return (
     <div class="stack">
@@ -169,128 +206,147 @@ export default function Attendance({ me }: { me: Me }) {
       {attendance.error ? <ErrorMessage error={attendance.error} onRetry={attendance.reload} /> : null}
       {attendance.loading && !attendance.data ? <Spinner /> : null}
 
-      {open ? (
-        <section class="card stack" aria-labelledby="open-title">
-          <p id="open-title" class="big">
+      <section class="card hero" aria-label={heroLabel}>
+        <div class="status-row">
+          <span class={`status-chip${open ? ' is-in' : ''}`}>
+            <span class="status-dot" aria-hidden="true" />
             {openText}
-          </p>
-          <div class="row">
-            <button type="button" class="btn btn-primary" disabled={busy} onClick={() => void checkOut()}>
-              <Icon name="checkin" size={22} />
-              {t('attendance.checkOut')}
-            </button>
-            <SpeakButton text={t('attendance.checkOut')} />
-          </div>
-        </section>
-      ) : (
-        <section class="card stack" aria-label={t('attendance.checkIn')}>
-          {config.checkInModes.includes('qr') ? (
-            <>
-              {scanning ? (
-                <div class="stack">
-                  <QrScanner
-                    onCode={(value) => {
-                      setScanning(false);
-                      void checkIn({ qrToken: tokenFromScan(value) });
-                    }}
-                    onFail={() => {
-                      setScanning(false);
-                      setNotice({ tone: 'warn', text: t('attendance.cameraDenied') });
-                    }}
-                  />
-                  <p class="muted">{t('attendance.scanHint')}</p>
-                  <div class="row">
-                    <button type="button" class="btn" onClick={() => setScanning(false)}>
-                      <Icon name="stop" size={22} />
-                      {t('attendance.stopScan')}
-                    </button>
-                  </div>
-                </div>
-              ) : canScan ? (
-                <div class="row">
-                  <button type="button" class="btn btn-primary" disabled={busy} onClick={() => setScanning(true)}>
-                    <Icon name="qr" size={22} />
-                    {t('attendance.scanQr')}
-                  </button>
-                  <SpeakButton text={t('attendance.scanQr')} />
-                </div>
-              ) : (
-                <p class="muted">{t('attendance.noScanner')}</p>
-              )}
+          </span>
+          <SpeakButton text={`${openText}. ${heroLabel}`} />
+        </div>
 
-              <form
-                class="stack"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const value = tokenFromScan(code);
-                  if (value) void checkIn({ qrToken: value });
+        <button
+          type="button"
+          class={`hero-btn${open ? ' is-open' : ''}`}
+          disabled={busy || (!open && modes.length === 0)}
+          onClick={heroPress}
+        >
+          <Icon name="checkin" size={40} />
+          <span>{heroLabel}</span>
+        </button>
+
+        {!open && modes.length > 1 ? (
+          <div class="segmented" role="group" aria-label={t('attendance.title')}>
+            {modes.map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                onClick={() => {
+                  setMode(value);
+                  setScanning(false);
                 }}
               >
-                <div class="field">
-                  <label class="field-label" for="gate-code">
-                    {t('attendance.codeLabel')}
-                  </label>
-                  <input
-                    id="gate-code"
-                    type="text"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    spellcheck={false}
-                    value={code}
-                    onInput={(event) => setCode((event.currentTarget as HTMLInputElement).value)}
-                  />
-                </div>
-                <div class="row">
-                  <button type="submit" class="btn" disabled={busy || !code.trim()}>
-                    {t('attendance.codeSubmit')}
-                  </button>
-                  <SpeakButton text={t('attendance.codeSubmit')} />
-                </div>
-              </form>
-            </>
-          ) : null}
-
-          {config.checkInModes.includes('geo') ? (
-            <div class="row">
-              <button type="button" class="btn" disabled={busy} onClick={() => void checkInByLocation()}>
-                <Icon name="location" size={22} />
-                {t('attendance.useLocation')}
+                {modeLabel[value]}
               </button>
-              <SpeakButton text={t('attendance.useLocation')} />
+            ))}
+          </div>
+        ) : null}
+
+        {!open && mode === 'scan' ? (
+          <div class="stack">
+            {scanning ? (
+              <>
+                <QrScanner
+                  onCode={(value) => {
+                    setScanning(false);
+                    void checkIn({ qrToken: tokenFromScan(value) });
+                  }}
+                  onFail={() => {
+                    setScanning(false);
+                    setNotice({ tone: 'warn', text: t('attendance.cameraDenied') });
+                  }}
+                />
+                <p class="muted">{t('attendance.scanHint')}</p>
+                <div class="row">
+                  <button type="button" class="btn" onClick={() => setScanning(false)}>
+                    <Icon name="stop" size={20} />
+                    {t('attendance.stopScan')}
+                  </button>
+                </div>
+              </>
+            ) : canScan ? (
+              <div class="row">
+                <button type="button" class="btn btn-primary" disabled={busy} onClick={() => setScanning(true)}>
+                  <Icon name="qr" size={20} />
+                  {t('attendance.scanQr')}
+                </button>
+                <SpeakButton text={t('attendance.scanQr')} />
+              </div>
+            ) : (
+              <p class="muted">{t('attendance.noScanner')}</p>
+            )}
+          </div>
+        ) : null}
+
+        {!open && mode === 'code' ? (
+          <form
+            class="stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = tokenFromScan(code);
+              if (value) void checkIn({ qrToken: value });
+            }}
+          >
+            <div class="field">
+              <label class="field-label" for="gate-code">
+                {t('attendance.codeLabel')}
+              </label>
+              <input
+                id="gate-code"
+                ref={codeRef}
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck={false}
+                value={code}
+                onInput={(event) => setCode((event.currentTarget as HTMLInputElement).value)}
+              />
             </div>
-          ) : null}
-        </section>
-      )}
+            <div class="row">
+              <button type="submit" class="btn" disabled={busy || !code.trim()}>
+                {t('attendance.codeSubmit')}
+              </button>
+              <SpeakButton text={t('attendance.codeSubmit')} />
+            </div>
+          </form>
+        ) : null}
+
+        {!open && mode === 'geo' ? (
+          <div class="row">
+            <button type="button" class="btn" disabled={busy} onClick={() => void checkInByLocation()}>
+              <Icon name="location" size={20} />
+              {t('attendance.useLocation')}
+            </button>
+            <SpeakButton text={t('attendance.useLocation')} />
+          </div>
+        ) : null}
+      </section>
 
       <section class="stack" aria-labelledby="recent-title">
         <h2 id="recent-title">{t('attendance.recent')}</h2>
         {attendance.data && attendance.data.recent.length === 0 ? <p class="muted">{t('attendance.noShifts')}</p> : null}
         {attendance.data && attendance.data.recent.length > 0 ? (
-          <div class="table-wrap">
-            <table class="table">
-              <caption class="visually-hidden">{t('attendance.recent')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t('attendance.colDate')}</th>
-                  <th scope="col">{t('attendance.colHours')}</th>
-                  <th scope="col">{t('attendance.colOvertime')}</th>
-                  <th scope="col">{t('attendance.colNight')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendance.data.recent.map((shift) => (
-                  <tr key={shift.id}>
-                    <td>{formatDay(istDay(shift.checkIn))}</td>
-                    <td>
-                      {shift.checkOut ? t('common.hours', { hours: shift.summary.hours }) : t('attendance.inProgress')}
-                    </td>
-                    <td>{t('common.hours', { hours: shift.summary.overtimeHours })}</td>
-                    <td>{t('common.hours', { hours: shift.summary.nightHours })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul class="shift-list">
+            {attendance.data.recent.map((shift) => (
+              <li key={shift.id}>
+                <span class="shift-date">{formatDay(istDay(shift.checkIn))}</span>
+                <span class="shift-meta">
+                  <span>{shift.checkOut ? t('common.hours', { hours: shift.summary.hours }) : t('attendance.inProgress')}</span>
+                  {shift.summary.overtimeHours > 0 ? (
+                    <span class="badge badge-overtime">
+                      {t('attendance.colOvertime')}: {t('common.hours', { hours: shift.summary.overtimeHours })}
+                    </span>
+                  ) : null}
+                  {shift.summary.nightHours > 0 ? (
+                    <span class="tag">
+                      {t('attendance.colNight')}: {t('common.hours', { hours: shift.summary.nightHours })}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
         ) : null}
       </section>
     </div>

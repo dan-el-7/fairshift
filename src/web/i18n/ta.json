@@ -271,5 +271,13 @@
   "admin.feedback.outOf": "5க்கு {score}",
   "admin.speech.summary": "{workers} தொழிலாளர்களில் இன்று {present} பேர் பணியில் உள்ளனர். {openReports} திறந்த அறிக்கைகள், {overdueReports} காலம் கடந்தவை. {fatigue} சோர்வு எச்சரிக்கைகள். {highRisk} தொழிலாளர்கள் வேலையை விட்டுச் செல்லும் அதிக ஆபத்தில் உள்ளனர்.",
   "admin.speech.report": "{category}. முன்னுரிமை {severity}. நிலை {status}. {text}",
-  "admin.speech.feedback": "பாதுகாப்பு: 5க்கு {safety}. நியாயம்: 5க்கு {fairness}. மரியாதை: 5க்கு {respect}. வேலைச்சுமை: 5க்கு {workload}."
+  "admin.speech.feedback": "பாதுகாப்பு: 5க்கு {safety}. நியாயம்: 5க்கு {fairness}. மரியாதை: 5க்கு {respect}. வேலைச்சுமை: 5க்கு {workload}.",
+  "common.close": "மூடு",
+  "lang.hear": "இந்த மொழியின் பெயரைக் கேளுங்கள்",
+  "textSize.label": "பெரிய எழுத்துரு",
+  "offline.message": "நீங்கள் இணையத்துடன் இணைக்கப்படவில்லை. உங்கள் கடைசித் தரவு காட்டப்படுகிறது; செயல்களுக்கு இணையம் தேவை.",
+  "nudge.text": "நீங்கள் {language} மொழியில் எழுதுவது போல் தெரிகிறது. செயலியை {language} மொழிக்கு மாற்றவா?",
+  "nudge.switch": "மாற்று",
+  "nudge.notNow": "இப்போது வேண்டாம்",
+  "landing.replayIntro": "வரவேற்பு அறிமுகத்தை மீண்டும் பார்க்கவும்"
 }

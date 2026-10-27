@@ -104,8 +104,8 @@ export default function Track() {
                 class={index <= currentIndex ? 'done' : undefined}
                 aria-current={index === currentIndex ? 'step' : undefined}
               >
-                {index <= currentIndex ? '✔ ' : ''}
-                {t(`status.${step}` as TKey)}
+                {index <= currentIndex ? <Icon name="check" size={20} /> : null}
+                <span>{t(`status.${step}` as TKey)}</span>
               </li>
             ))}
           </ol>

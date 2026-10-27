@@ -64,7 +64,7 @@ function LineList({ lines, payModel, deduction }: { lines: PayLine[]; payModel: 
     <ul class="lines">
       {lines.map((line, index) => (
         <li key={`${line.key}-${index}`}>
-          <span>{payLineLabel(line, payModel)}</span>
+          <span class="lines-text">{payLineLabel(line, payModel)}</span>
           <span class="amount">
             {deduction ? '−' : ''}
             {formatMoney(line.amount)}
@@ -110,33 +110,35 @@ export default function Pay({ me }: { me: Me }) {
 
       {slip ? (
         <>
-          <section class="card stack" aria-labelledby="period-title">
-            <h2 id="period-title">{periodLabel(slip.period.id)}</h2>
-            <p class="muted">
-              {payModel === 'daily' ? `${t('pay.daysWorked', { days: slip.summary.daysWorked })} · ` : ''}
-              {t('pay.hoursWorked', { hours: slip.summary.hours })}
-            </p>
-          </section>
-
-          <section class="card stack" aria-labelledby="earn-title">
-            <h2 id="earn-title">{t('pay.earnings')}</h2>
-            <LineList lines={earnings} payModel={payModel} deduction={false} />
-            <div class="total-row">
-              <span>{t('pay.gross')}</span>
-              <strong class="amount">{formatMoney(slip.gross)}</strong>
+          <section class="card receipt" aria-labelledby="period-title">
+            <div class="receipt-head">
+              <h2 id="period-title">{periodLabel(slip.period.id)}</h2>
+              <p class="muted">
+                {payModel === 'daily' ? `${t('pay.daysWorked', { days: slip.summary.daysWorked })} · ` : ''}
+                {t('pay.hoursWorked', { hours: slip.summary.hours })}
+              </p>
             </div>
+
+            <section class="stack" aria-labelledby="earn-title">
+              <h3 id="earn-title">{t('pay.earnings')}</h3>
+              <LineList lines={earnings} payModel={payModel} deduction={false} />
+              <div class="total-row">
+                <span>{t('pay.gross')}</span>
+                <span class="amount">{formatMoney(slip.gross)}</span>
+              </div>
+            </section>
+
+            <section class="stack" aria-labelledby="deduct-title">
+              <h3 id="deduct-title">{t('pay.deductionsHeading')}</h3>
+              <LineList lines={deductions} payModel={payModel} deduction />
+              <div class="total-row">
+                <span>{t('pay.deductions')}</span>
+                <span class="amount">{formatMoney(slip.deductions)}</span>
+              </div>
+            </section>
           </section>
 
-          <section class="card stack" aria-labelledby="deduct-title">
-            <h2 id="deduct-title">{t('pay.deductionsHeading')}</h2>
-            <LineList lines={deductions} payModel={payModel} deduction />
-            <div class="total-row">
-              <span>{t('pay.deductions')}</span>
-              <strong class="amount">{formatMoney(slip.deductions)}</strong>
-            </div>
-          </section>
-
-          <section class="card stack" aria-labelledby="net-title">
+          <section class="card net-panel" aria-labelledby="net-title">
             <h2 id="net-title" class="visually-hidden">
               {t('pay.net')}
             </h2>
@@ -146,13 +148,9 @@ export default function Pay({ me }: { me: Me }) {
             </div>
           </section>
 
-          <button
-            type="button"
-            class="btn btn-primary btn-block"
-            onClick={() => speak(payslipSpeech(slip, payModel), lang)}
-          >
-            <Icon name="speaker" size={24} />
-            <span aria-hidden="true">🔊</span> {t('pay.readAll')}
+          <button type="button" class="btn btn-block" onClick={() => speak(payslipSpeech(slip, payModel), lang)}>
+            <Icon name="speaker" size={20} />
+            {t('pay.readAll')}
           </button>
         </>
       ) : null}

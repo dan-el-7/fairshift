@@ -1,0 +1,24 @@
+{
+  "name": "FairShift",
+  "short_name": "FairShift",
+  "description": "Check in, see your pay clearly, report safety problems anonymously and keep a skills passport.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0F766E",
+  "background_color": "#F6F7F9",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

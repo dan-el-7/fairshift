@@ -134,9 +134,9 @@ export default function Workers() {
                   <tr key={worker.id}>
                     <th scope="row">{worker.name}</th>
                     <td>{worker.jobTitle}</td>
-                    <td>{t('common.hours', { hours: worker.hours14d })}</td>
-                    <td>{t('common.hours', { hours: worker.overtime14d })}</td>
-                    <td>{worker.fatigue.length}</td>
+                    <td class="num">{t('common.hours', { hours: worker.hours14d })}</td>
+                    <td class="num">{t('common.hours', { hours: worker.overtime14d })}</td>
+                    <td class="num">{worker.fatigue.length}</td>
                     <td>
                       <span class={`badge badge-${worker.quitRisk.level}`}>{t(`risk.level.${worker.quitRisk.level}` as TKey)}</span>{' '}
                       <span>{t('admin.riskScore', { score: worker.quitRisk.score })}</span>

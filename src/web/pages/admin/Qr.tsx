@@ -61,9 +61,10 @@ export default function Qr() {
         <Spinner />
       )}
 
-      <p class="big">
-        {t('admin.qr.refreshIn', { seconds })}
-      </p>
+      <p class="big">{t('admin.qr.refreshIn', { seconds })}</p>
+      <div class="countdown" aria-hidden="true">
+        <div class="countdown-fill" style={{ width: `${Math.min(100, (seconds / (REFRESH_MS / 1000)) * 100)}%` }} />
+      </div>
       <p class="muted">{t('admin.qr.hint')}</p>
     </div>
   );
