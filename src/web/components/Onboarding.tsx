@@ -13,18 +13,20 @@ export interface OnboardingProps {
   mode?: OnboardingMode;
   /** Required for intro; optional for replay, where it adds the role's slides. */
   role?: Role | null;
+  /** Intro only: the full flow (hello, language, then the role's slides). */
+  greet?: boolean;
 }
 
 /**
  * Onboarding overlay. Mount it for the mode that applies; onDone runs after the exit animation
  * (or at once with reduced motion). See OnboardingMode for each flow.
  */
-export function Onboarding({ onDone, mode = 'first', role = null }: OnboardingProps) {
+export function Onboarding({ onDone, mode = 'first', role = null, greet = false }: OnboardingProps) {
   const uiLang = useLang();
   const copy = COPY[uiLang];
   const slideRole: Role | null = mode === 'first' ? null : role;
   const slideSet = slideRole ? { role: slideRole, slides: copy.roles[slideRole] } : null;
-  const flow = useOnboardingFlow({ mode, slideRole, slideCount: slideSet?.slides.length ?? 0, onDone });
+  const flow = useOnboardingFlow({ mode, slideRole, slideCount: slideSet?.slides.length ?? 0, openWithHello: greet, onDone });
 
   return (
     <div

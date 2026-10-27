@@ -17,6 +17,8 @@ interface FlowOptions {
   mode: OnboardingMode;
   slideRole: Role | null;
   slideCount: number;
+  /** Intro only: run the full flow (hello, language, then the role's slides) instead of slides alone. */
+  openWithHello: boolean;
   onDone: () => void;
 }
 
@@ -111,9 +113,9 @@ function useSwipe(onNext: () => void, onPrev: () => void) {
 }
 
 /** All state and actions for the onboarding overlay. The step components only render from this. */
-export function useOnboardingFlow({ mode, slideRole, slideCount, onDone }: FlowOptions) {
+export function useOnboardingFlow({ mode, slideRole, slideCount, openWithHello, onDone }: FlowOptions) {
   const [reduce] = useState<boolean>(prefersReducedMotion);
-  const [step, setStep] = useState<Step>(mode === 'intro' && slideRole ? 'slides' : 'hello');
+  const [step, setStep] = useState<Step>(mode === 'intro' && slideRole && !openWithHello ? 'slides' : 'hello');
   const [picked, setPicked] = useState<Language | null>(navigatorLanguage);
   const [pressed, setPressed] = useState<Language | null>(null);
   const [index, setIndex] = useState(0);
@@ -180,8 +182,8 @@ export function useOnboardingFlow({ mode, slideRole, slideCount, onDone }: FlowO
     }
   };
   const primary = () => (index < slideCount - 1 ? goNext() : complete());
-  // The intro has no language step, so Back is hidden on its first slide.
-  const canBack = index > 0 || mode !== 'intro';
+  // A slides-only intro has no language step, so Back is hidden on its first slide.
+  const canBack = index > 0 || mode !== 'intro' || openWithHello;
   const back = () => (index > 0 ? goPrev() : setStep('language'));
   const swipe = useSwipe(goNext, goPrev);
 

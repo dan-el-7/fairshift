@@ -31,7 +31,7 @@ async function violations(container: Element) {
   return results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html).join(' | ')}`);
 }
 
-function renderOnboarding(props: { mode?: OnboardingMode; role?: Role | null } = {}) {
+function renderOnboarding(props: { mode?: OnboardingMode; role?: Role | null; greet?: boolean } = {}) {
   const onDone = vi.fn();
   const view = render(<Onboarding onDone={onDone} {...props} />);
   return { onDone, container: view.container };
@@ -134,6 +134,15 @@ describe('Onboarding role intro', () => {
     expect(screen.queryByRole('button', { name: /Tap to begin/ })).toBeNull();
     expect(screen.getByRole('img', { name: 'Step 1 of 4' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  });
+
+  it('with greet, the intro runs the full flow: hello, language, then the role slides', async () => {
+    renderOnboarding({ mode: 'intro', role: 'worker', greet: true });
+    await goToLanguageStep();
+    fireEvent.click(screen.getByRole('button', { name: /^English/ }));
+    expect(await screen.findByRole('heading', { name: WORKER_1 })).toBeTruthy();
+    // Back from the first slide returns to the language step.
+    expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
   });
 
   it("worker intro walks through all four worker slides, then Let's go marks it seen and closes", async () => {

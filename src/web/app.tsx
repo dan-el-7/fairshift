@@ -113,6 +113,8 @@ interface OverlayProps {
   welcome: boolean;
   firstVisit: boolean;
   introRole: Role | null;
+  /** Run the role intro as the full flow, hello and language first (not when the welcome flow just played). */
+  greetIntro: boolean;
   role: Role | null;
   onReplayDone: () => void;
   onFirstDone: () => void;
@@ -120,11 +122,19 @@ interface OverlayProps {
 }
 
 /** Shows at most one onboarding overlay, in priority order: replay, first visit, then a role intro. */
-function Overlay({ welcome, firstVisit, introRole, role, onReplayDone, onFirstDone, onIntroDone }: OverlayProps) {
+function Overlay({ welcome, firstVisit, introRole, greetIntro, role, onReplayDone, onFirstDone, onIntroDone }: OverlayProps) {
   if (welcome) return <Onboarding key="replay" mode="replay" role={role} onDone={onReplayDone} />;
   if (firstVisit) return <Onboarding key="first" mode="first" onDone={onFirstDone} />;
   if (introRole) {
-    return <Onboarding key={`intro-${introRole}`} mode="intro" role={introRole} onDone={() => onIntroDone(introRole)} />;
+    return (
+      <Onboarding
+        key={`intro-${introRole}`}
+        mode="intro"
+        role={introRole}
+        greet={greetIntro}
+        onDone={() => onIntroDone(introRole)}
+      />
+    );
   }
   return null;
 }
@@ -140,6 +150,8 @@ export function App() {
   const welcome = root === 'welcome';
   const [firstVisit, setFirstVisit] = useState(() => !hasOnboarded());
   const [introDismissed, setIntroDismissed] = useState<Role | null>(null);
+  // True once the welcome flow (with its greeting) has played this session, so the next intro skips the greeting.
+  const [greeted, setGreeted] = useState(false);
   const introRole = pendingIntroRole(me, introDismissed);
 
   useEffect(() => {
@@ -200,14 +212,17 @@ export function App() {
         welcome={welcome}
         firstVisit={firstVisit}
         introRole={introRole}
+        greetIntro={!greeted}
         role={me?.role ?? null}
         onReplayDone={() => {
           setFirstVisit(false);
+          setGreeted(true);
           navigate('/');
           focusMain();
         }}
         onFirstDone={() => {
           setFirstVisit(false);
+          setGreeted(true);
           focusMain();
         }}
         onIntroDone={(role) => {
