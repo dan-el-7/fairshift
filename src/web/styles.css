@@ -2261,3 +2261,10 @@ legend {
   }
 }
 
+/* One frame without glass blur after a theme change, so mobile Chromium repaints those layers (theme.ts). */
+.theme-repaint *,
+.theme-repaint *::before,
+.theme-repaint *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
