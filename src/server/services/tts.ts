@@ -27,7 +27,8 @@ const VOICE = 'Kore';
 const KV_MAX_BASE64 = 900_000;
 const MEMORY_CACHE_MAX = 100;
 const DEFAULT_RATE = 24_000;
-const LANGUAGE_NAME: Record<Language, string> = { en: 'Indian English', hi: 'Hindi', ta: 'Tamil' };
+/** Bumped when the prompt changes, so clips made with an old prompt are never served. */
+const CACHE_VERSION = 'v2';
 
 /** Wraps raw 16-bit little-endian PCM in a RIFF/WAVE header. The header is 44 bytes. */
 export function pcmToWav(pcm: Uint8Array, sampleRate: number, channels = 1, bitsPerSample = 16): Uint8Array {
@@ -118,16 +119,13 @@ export function createTts(options: TtsOptions): Tts {
     }
   }
 
-  async function generate(gen: GenAiClient, model: string, lang: Language, text: string, timeoutMs: number): Promise<Uint8Array> {
+  async function generate(gen: GenAiClient, model: string, text: string, timeoutMs: number): Promise<Uint8Array> {
     const response = await withTimeout(
       gen.models.generateContent({
         model,
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `Read this aloud clearly and calmly in ${LANGUAGE_NAME[lang]}:\n${text}` }],
-          },
-        ],
+        // Only the words to speak: TTS models read any instruction aloud too. The language is
+        // detected from the script, so Hindi and Tamil text is spoken in that language.
+        contents: [{ role: 'user', parts: [{ text }] }],
         config: {
           responseModalities: ['AUDIO'],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } },
@@ -148,14 +146,14 @@ export function createTts(options: TtsOptions): Tts {
 
       try {
         // Keyed without the model so a cache hit never has to list models first (that call is slow).
-        const key = `fs:tts:${createHash('sha256').update(`${VOICE}|${lang}|${text}`).digest('hex')}`;
+        const key = `fs:tts:${createHash('sha256').update(`${CACHE_VERSION}|${VOICE}|${lang}|${text}`).digest('hex')}`;
         const cached = await readCache(key);
         if (cached) return { wav: cached };
 
         const model = await pickModel(client);
         if (!model) return null;
 
-        const wav = await generate(client, model, lang, text, Math.max(1, deadline - now().getTime()));
+        const wav = await generate(client, model, text, Math.max(1, deadline - now().getTime()));
         await writeCache(key, wav);
         return { wav };
       } catch (err) {

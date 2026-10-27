@@ -96,8 +96,9 @@ describe('createTts', () => {
     expect(calls[0]?.config.responseModalities).toEqual(['AUDIO']);
     expect(calls[0]?.config.speechConfig).toEqual({ voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } });
     const prompt = JSON.stringify(calls[0]?.contents);
-    expect(prompt).toContain('Hindi');
-    expect(prompt).toContain('नमस्ते दुनिया');
+    // Only the words: a TTS model reads any instruction aloud along with them.
+    expect(calls[0]?.contents).toEqual([{ role: 'user', parts: [{ text: 'नमस्ते दुनिया' }] }]);
+    expect(prompt).not.toMatch(/read|aloud|hindi/i);
   });
 
   it('uses GEMINI_TTS_MODEL without listing models', async () => {
