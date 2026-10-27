@@ -76,9 +76,9 @@ export default function Feedback(_props: { me: Me }) {
       {DIMENSIONS.map((dimension) => {
         const question = t(`feedback.q.${dimension}` as TKey);
         return (
-          <fieldset class="card stack" key={dimension}>
+          <fieldset class="card stack question-card" key={dimension}>
             <legend class="field-label">{question}</legend>
-            <div class="row">
+            <div class="question-speak">
               <SpeakButton text={question} />
             </div>
             <div class="faces" role="radiogroup" aria-label={question}>

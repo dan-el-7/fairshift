@@ -66,7 +66,7 @@ function LineList({ lines, payModel, deduction }: { lines: PayLine[]; payModel: 
         <li key={`${line.key}-${index}`}>
           <span class="lines-text">{payLineLabel(line, payModel)}</span>
           <span class="amount">
-            {deduction ? '−' : ''}
+            {deduction && line.amount !== 0 ? '−' : ''}
             {formatMoney(line.amount)}
           </span>
         </li>

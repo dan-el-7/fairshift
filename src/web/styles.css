@@ -773,12 +773,40 @@ textarea {
   width: 100%;
   min-height: 48px;
   padding: 10px 14px;
+  /* border-strong keeps the field boundary at 3:1 or more against the page. */
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   background: var(--surface);
+  box-shadow: inset 0 1px 2px rgba(9, 9, 11, 0.04);
   color: var(--text);
   font: inherit;
   font-size: 1rem;
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+input:not([type='radio']):not([type='checkbox']):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+/* Native arrow replaced by a quiet chevron (a data: image, allowed by the CSP's img-src). */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  cursor: pointer;
 }
 textarea {
   min-height: 120px;
@@ -1260,18 +1288,30 @@ legend {
   gap: var(--space-3);
   min-height: 96px;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-card);
-  background: var(--surface);
+  background: var(--card-sheen), var(--card-fill);
+  box-shadow: var(--card-highlight), var(--shadow);
   color: var(--text);
   font: inherit;
-  font-weight: 600;
+  font-weight: 550;
+  letter-spacing: -0.01em;
   line-height: 1.25;
   text-align: start;
   cursor: pointer;
 }
+.choice:hover {
+  border-color: var(--hover-border);
+}
+/* The icon sits in a small neutral tile, like the home tiles. */
 .choice .icon {
-  color: var(--primary);
+  flex: none;
+  box-sizing: content-box;
+  padding: 7px;
+  border: 1px solid var(--icon-border);
+  border-radius: 8px;
+  background: var(--icon-bg);
+  color: var(--icon-fg);
 }
 .choice[aria-pressed='true'] {
   border-color: var(--primary);
@@ -1281,6 +1321,24 @@ legend {
 }
 .choice[aria-pressed='true'] .icon {
   color: var(--primary-strong-text);
+}
+/* Feedback question cards: the read-aloud button sits in the top-right corner, beside the question. */
+.question-card {
+  position: relative;
+}
+.question-card > legend {
+  float: left;
+  width: 100%;
+  padding-right: 52px;
+  margin-bottom: 0;
+}
+.question-card > legend + * {
+  clear: both;
+}
+.question-speak {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
 }
 .notice-anon {
   display: flex;
@@ -2157,6 +2215,12 @@ legend {
   .choice-grid,
   .tile-grid.quick-links {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* One column: compact rows, icon tile beside the label, so the list needs far less scrolling. */
+  .choice {
+    flex-direction: row;
+    align-items: center;
+    min-height: 60px;
   }
 }
 
