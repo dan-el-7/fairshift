@@ -943,6 +943,7 @@ legend {
 
 /* Worker home */
 .greeting {
+  container: greeting / inline-size;
   display: grid;
   gap: var(--space-3);
   background: var(--wash), var(--card-sheen), var(--card-fill);
@@ -954,26 +955,34 @@ legend {
   line-height: 1.1;
 }
 .greeting-actions {
-  display: flex;
-  flex-wrap: wrap;
+  /* Narrow: the chip and its speaker share a row (the speaker can never wrap away from the chip),
+     the button spans the full width below. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
 }
-/*
- * The chip, its speaker and the button are flex items of one row (the status row's box is dropped),
- * so on one line the chip and the button share the width equally, with the speaker between them.
- * When the row is too narrow the button wraps onto its own full-width line.
- */
+/* The status row's box is dropped so the chip and speaker are cells of this grid. */
 .greeting-actions > .status-row {
   display: contents;
 }
-.greeting-actions .status-chip,
 .greeting-actions > .btn {
-  flex: 1 1 240px;
+  grid-column: 1 / -1;
 }
 /* Centred like the button's label, so the pair reads as a matched set. */
 .greeting-actions .status-chip {
   justify-content: center;
+  min-width: 0;
+}
+/* Wide card: chip, speaker and button on one row, chip and button equal widths. Sized by the card,
+   not the screen, so large text or any phone width still picks the layout that fits. */
+@container greeting (min-width: 560px) {
+  .greeting-actions {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .greeting-actions > .btn {
+    grid-column: auto;
+  }
 }
 .status-row {
   display: flex;
