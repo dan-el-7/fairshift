@@ -41,6 +41,7 @@ function WorkerNav() {
  */
 export function WorkerShell({ render }: { render: (me: Me) => VNode }) {
   const me = useSession();
+  const route = useRoute();
 
   useEffect(() => {
     void ensureSession();
@@ -55,7 +56,9 @@ export function WorkerShell({ render }: { render: (me: Me) => VNode }) {
   return (
     <>
       <WorkerNav />
-      {render(me)}
+      <div key={route.path} class="route-view">
+        {render(me)}
+      </div>
     </>
   );
 }

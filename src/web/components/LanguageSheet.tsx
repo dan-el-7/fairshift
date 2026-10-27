@@ -136,15 +136,24 @@ export function LanguageSheet({ open, onClose }: LanguageSheetProps) {
   );
 }
 
-/** Compact app-bar button that opens the language sheet. Renders its own sheet. */
+/** Fixed on purpose, like the sheet title: the button must be findable whatever language is active. */
+const LANG_BUTTON_LABEL = 'Language · भाषा · மொழி';
+
+/** Round app-bar icon button that opens the language sheet. Renders its own sheet. */
 export function LanguageHelpButton() {
   useLang();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button type="button" class="qol-lang-help" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-        <Icon name="globe" size={20} />
-        <span>भाषा · மொழி · Language</span>
+      <button
+        type="button"
+        class="qol-lang-help"
+        aria-haspopup="dialog"
+        aria-label={LANG_BUTTON_LABEL}
+        title={LANG_BUTTON_LABEL}
+        onClick={() => setOpen(true)}
+      >
+        <Icon name="translate" size={24} />
       </button>
       <LanguageSheet open={open} onClose={() => setOpen(false)} />
     </>

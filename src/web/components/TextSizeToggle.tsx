@@ -18,11 +18,14 @@ export function TextSizeToggle() {
     document.documentElement.classList.toggle(CLASS, large);
   }, [large]);
 
+  const label = t('textSize.label');
   return (
     <button
       type="button"
       class="qol-text-size"
       aria-pressed={large ? 'true' : 'false'}
+      aria-label={label}
+      title={label}
       onClick={() => {
         const next = !large;
         writePref(PREF.textLarge, next ? '1' : '0');
@@ -30,7 +33,6 @@ export function TextSizeToggle() {
       }}
     >
       <span class="qol-text-size-mark" aria-hidden="true">Aa</span>
-      <span>{t('textSize.label')}</span>
     </button>
   );
 }

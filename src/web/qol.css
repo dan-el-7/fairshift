@@ -133,20 +133,35 @@ html.text-lg {
   outline-offset: 2px;
 }
 
-/* App-bar language help button */
-.qol-lang-help {
+/* App-bar icon buttons: round, 48px, icon only. The names live in aria-label and title. */
+.qol-lang-help,
+.qol-text-size {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 6px 12px;
-  border: 1px solid var(--border, #7a7a7a);
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  padding: 0;
+  border: 1px solid var(--border-strong, #7c8799);
   border-radius: 999px;
   background: var(--surface, #ffffff);
   color: var(--text, #1a1a1a);
   font: inherit;
-  font-size: 0.9rem;
   cursor: pointer;
+}
+
+.qol-lang-help:hover,
+.qol-text-size:hover {
+  background: var(--surface-2, #f1f4f6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .qol-lang-help:active,
+  .qol-text-size:active {
+    transform: scale(0.98);
+  }
 }
 
 /* Language nudge */
@@ -192,29 +207,17 @@ html.text-lg {
 }
 
 /* Text size toggle */
-.qol-text-size {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 6px 12px;
-  border: 1px solid var(--border, #7a7a7a);
-  border-radius: 999px;
-  background: var(--surface, #ffffff);
-  color: var(--text, #1a1a1a);
-  font: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
 .qol-text-size[aria-pressed="true"] {
   border-color: var(--primary, #0b5d4b);
   background: var(--primary, #0b5d4b);
-  color: var(--primary-text, #ffffff);
+  color: var(--on-primary, #ffffff);
 }
 
 .qol-text-size-mark {
+  font-size: 1rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 /* Offline notice */
@@ -226,13 +229,3 @@ html.text-lg {
   color: var(--warn-text, #4a3500);
 }
 
-@media (max-width: 560px) {
-  .qol-text-size > span:not(.qol-text-size-mark) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-}

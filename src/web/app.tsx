@@ -107,6 +107,14 @@ export function App() {
 
   return (
     <>
+      <div class="app-bg" aria-hidden="true">
+        <div class="app-bg-blobs">
+          <span class="app-blob app-blob-teal" />
+          <span class="app-blob app-blob-mint" />
+          <span class="app-blob app-blob-indigo" />
+          <span class="app-blob app-blob-amber" />
+        </div>
+      </div>
       <a
         class="skip-link"
         href="#main"
@@ -148,7 +156,14 @@ export function App() {
       <main id="main" ref={mainRef} tabIndex={-1} class={mainClass || undefined}>
         <OfflineBanner />
         <Suspense fallback={<Spinner />}>
-          <Routes route={route} />
+          {/* Worker pages key their own wrapper (see WorkerShell) so the fixed bottom nav is not inside a transformed box. */}
+          {root === 'w' ? (
+            <Routes route={route} />
+          ) : (
+            <div key={route.path} class="route-view">
+              <Routes route={route} />
+            </div>
+          )}
         </Suspense>
       </main>
     </>

@@ -37,6 +37,8 @@ const PATHS = {
   flame: ['M12 22c4 0 7-3 7-7 0-4-3-6-4-10-2 2-2 4-3 5-1-2-1-5 0-7-4 3-7 6-7 12 0 4 3 7 7 7z'],
   help: [circle(12, 12, 9), 'M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7', 'M12 17.5v.5'],
   chart: ['M4 20V10', 'M10 20V4', 'M16 20v-7', 'M2 20h20'],
+  // Standard "languages" glyph: a character with strokes on the left, an A on the right.
+  translate: ['M5 8l6 6', 'M4 14l6-6 2-3', 'M2 5h12', 'M7 2h1', 'M22 22l-5-10-5 10', 'M14 18h6'],
 } as const;
 
 export type IconName = keyof typeof PATHS;
