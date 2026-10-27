@@ -1,3 +1,4 @@
+import { createPortal } from 'preact/compat';
 import { useCallback, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Language } from '../../shared/types';
 import { hasExplicitChoice } from '../langDetect';
@@ -155,7 +156,11 @@ export function LanguageHelpButton() {
       >
         <Icon name="translate" size={24} />
       </button>
-      <LanguageSheet open={open} onClose={() => setOpen(false)} />
+      {/* Portalled to <body>: the app bar's backdrop-filter would otherwise become the containing
+          block for the sheet's fixed overlay and squeeze it into the bar. */}
+      {typeof document === 'undefined'
+        ? null
+        : createPortal(<LanguageSheet open={open} onClose={() => setOpen(false)} />, document.body)}
     </>
   );
 }

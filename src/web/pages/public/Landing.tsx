@@ -126,7 +126,7 @@ export default function Landing() {
 
       <section class="stack" aria-labelledby="quick-title">
         <h2 id="quick-title">{t('landing.quick')}</h2>
-        <div class="tile-grid">
+        <div class="tile-grid quick-links">
           <Tile href="#/track" icon="track" label={t('nav.trackReport')} />
           <Tile href="#/verify" icon="verify" label={t('nav.verifyPassport')} />
           <Tile href="#/welcome" icon="globe" label={t('landing.replayIntro')} />

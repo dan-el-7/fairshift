@@ -279,5 +279,10 @@
   "nudge.text": "आप {language} में लिख रहे हैं। क्या ऐप को {language} में बदलें?",
   "nudge.switch": "बदलें",
   "nudge.notNow": "अभी नहीं",
-  "landing.replayIntro": "स्वागत परिचय फिर से देखें"
+  "landing.replayIntro": "स्वागत परिचय फिर से देखें",
+  "nav.short.home": "होम",
+  "nav.short.attendance": "हाज़िरी",
+  "nav.short.pay": "वेतन",
+  "nav.short.report": "शिकायत",
+  "nav.short.skills": "कौशल"
 }

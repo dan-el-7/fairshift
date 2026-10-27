@@ -8,12 +8,13 @@ import { navigate, useRoute } from '../../router';
 import { ensureSession, useSession } from '../../session';
 
 /** The five worker sections, with the existing labels and icons. */
-const NAV: Array<{ path: string; icon: IconName; label: TKey }> = [
-  { path: '/w', icon: 'home', label: 'nav.home' },
-  { path: '/w/attendance', icon: 'checkin', label: 'attendance.title' },
-  { path: '/w/pay', icon: 'pay', label: 'pay.title' },
-  { path: '/w/report', icon: 'report', label: 'report.title' },
-  { path: '/w/skills', icon: 'skills', label: 'skills.title' },
+/** `short` is a one-word label that fits a phone-width tab in every language; `label` is the full name. */
+const NAV: Array<{ path: string; icon: IconName; label: TKey; short: TKey }> = [
+  { path: '/w', icon: 'home', label: 'nav.home', short: 'nav.short.home' },
+  { path: '/w/attendance', icon: 'checkin', label: 'attendance.title', short: 'nav.short.attendance' },
+  { path: '/w/pay', icon: 'pay', label: 'pay.title', short: 'nav.short.pay' },
+  { path: '/w/report', icon: 'report', label: 'report.title', short: 'nav.short.report' },
+  { path: '/w/skills', icon: 'skills', label: 'skills.title', short: 'nav.short.skills' },
 ];
 
 function WorkerNav() {
@@ -23,11 +24,19 @@ function WorkerNav() {
       {NAV.map((item) => {
         const current = item.path === route.path;
         return (
-          <a key={item.path} href={`#${item.path}`} aria-current={current ? 'page' : undefined}>
+          <a
+            key={item.path}
+            href={`#${item.path}`}
+            aria-current={current ? 'page' : undefined}
+            aria-label={t(item.label)}
+            title={t(item.label)}
+          >
             <span class="nav-pill">
               <Icon name={item.icon} size={20} />
             </span>
-            <span class="nav-text">{t(item.label)}</span>
+            <span class="nav-text" aria-hidden="true">
+              {t(item.short)}
+            </span>
           </a>
         );
       })}

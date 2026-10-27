@@ -1941,3 +1941,24 @@ legend {
     box-shadow: var(--shadow-lift);
   }
 }
+
+/* Narrow phones with long Indic labels: give label-heavy grids the full width, and let badges,
+   credential lines and nav labels shrink inside their boxes instead of pushing the page wider. */
+.worker-nav .nav-text {
+  max-width: 100%;
+}
+.badge {
+  max-width: 100%;
+  white-space: normal;
+}
+.cred-head > *,
+.entry-list li {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+@media (max-width: 400px) {
+  .choice-grid,
+  .tile-grid.quick-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

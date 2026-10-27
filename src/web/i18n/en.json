@@ -279,5 +279,10 @@
   "nudge.text": "You seem to be writing in {language}. Switch the app to {language}?",
   "nudge.switch": "Switch",
   "nudge.notNow": "Not now",
-  "landing.replayIntro": "Watch the welcome tour"
+  "landing.replayIntro": "Watch the welcome tour",
+  "nav.short.home": "Home",
+  "nav.short.attendance": "Check in",
+  "nav.short.pay": "Pay",
+  "nav.short.report": "Report",
+  "nav.short.skills": "Skills"
 }

@@ -550,3 +550,10 @@
     transition: none;
   }
 }
+
+/* The main area of a language card sits next to its speaker button: draw its focus ring inside
+   the card so it never runs into the speaker or the selected-card ring. */
+.ob-card-main:focus-visible {
+  outline-offset: -4px;
+  border-radius: 18px;
+}

@@ -176,25 +176,28 @@ export default function Dashboard() {
           <section class="card stack" aria-labelledby="chart-title">
             <h2 id="chart-title">{t('admin.chart.title')}</h2>
             <AttendanceChart series={data.attendance14d} />
-            <table class="visually-hidden">
-              <caption>{t('admin.chart.caption')}</caption>
-              <thead>
-                <tr>
-                  <th scope="col">{t('admin.col.day')}</th>
-                  <th scope="col">{t('admin.col.present')}</th>
-                  <th scope="col">{t('admin.col.overtime')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.attendance14d.map((point) => (
-                  <tr key={point.day}>
-                    <th scope="row">{point.day}</th>
-                    <td>{point.present}</td>
-                    <td>{point.overtimeHours}</td>
+            {/* Hidden via a wrapper: a table keeps its intrinsic width even when clipped. */}
+            <div class="visually-hidden">
+              <table>
+                <caption>{t('admin.chart.caption')}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('admin.col.day')}</th>
+                    <th scope="col">{t('admin.col.present')}</th>
+                    <th scope="col">{t('admin.col.overtime')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.attendance14d.map((point) => (
+                    <tr key={point.day}>
+                      <th scope="row">{point.day}</th>
+                      <td>{point.present}</td>
+                      <td>{point.overtimeHours}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section class="card stack" aria-labelledby="severity-title">

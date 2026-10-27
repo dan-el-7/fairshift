@@ -279,5 +279,10 @@
   "nudge.text": "நீங்கள் {language} மொழியில் எழுதுவது போல் தெரிகிறது. செயலியை {language} மொழிக்கு மாற்றவா?",
   "nudge.switch": "மாற்று",
   "nudge.notNow": "இப்போது வேண்டாம்",
-  "landing.replayIntro": "வரவேற்பு அறிமுகத்தை மீண்டும் பார்க்கவும்"
+  "landing.replayIntro": "வரவேற்பு அறிமுகத்தை மீண்டும் பார்க்கவும்",
+  "nav.short.home": "முகப்பு",
+  "nav.short.attendance": "வருகை",
+  "nav.short.pay": "ஊதியம்",
+  "nav.short.report": "புகார்",
+  "nav.short.skills": "திறன்"
 }
