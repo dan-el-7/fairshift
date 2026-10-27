@@ -1,6 +1,7 @@
 import { GoogleGenAI, ThinkingLevel, type GenerateContentConfig, type GenerateContentResponse } from '@google/genai';
 import { z } from 'zod';
 import type { IndustryConfig, Language, Severity } from '../../shared/types';
+import { findDemoReport } from '../../shared/demoReports';
 import { redactPII } from '../domain/anonymity';
 import { heuristicTriage } from '../domain/triage';
 import { listModelNames, textModelCandidates, TimeoutError, withTimeout } from './models';
@@ -58,6 +59,11 @@ export function heuristicAi(): ReportAI {
     analyse({ text, cfg }) {
       const clean = redactPII(text?.trim() ?? '');
       if (clean.length === 0) return Promise.reject(new AudioUnavailableError());
+      // The demo example keeps its full result (with English translation) even without the AI.
+      const demo = findDemoReport(clean);
+      if (demo && cfg.hazardCategories.includes(demo.category)) {
+        return Promise.resolve({ text: clean, textEn: demo.textEn, category: demo.category, severity: demo.severity });
+      }
       const { category, severity } = heuristicTriage(clean, cfg);
       return Promise.resolve({ text: clean, textEn: clean, category, severity });
     },

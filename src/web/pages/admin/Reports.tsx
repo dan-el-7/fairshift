@@ -8,7 +8,7 @@ import { SeverityBadge } from '../../components/Badge';
 import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { formatDay, t, useLang, type TKey } from '../../i18n';
-import { useApiData } from '../../useApiData';
+import { LIVE_REFRESH_MS, useApiData } from '../../useApiData';
 import { categoryLabel, REPORT_STATUSES, sortReports } from './shared';
 
 interface ReportItemProps {
@@ -130,7 +130,7 @@ function ReportItem({ report, onUpdated }: ReportItemProps) {
 }
 
 export default function Reports() {
-  const reports = useApiData<ReportAdmin[]>('/api/admin/reports');
+  const reports = useApiData<ReportAdmin[]>('/api/admin/reports', { refreshMs: LIVE_REFRESH_MS });
   const [updates, setUpdates] = useState<Record<string, ReportAdmin>>({});
 
   const list = reports.data

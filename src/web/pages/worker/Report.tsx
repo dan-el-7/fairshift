@@ -7,6 +7,7 @@ import { Banner } from '../../components/Banner';
 import { Icon, type IconName } from '../../components/Icon';
 import { SpeakButton } from '../../components/SpeakButton';
 import { copyText } from '../../clipboard';
+import { DEMO_REPORTS } from '../../../shared/demoReports';
 import { t, type TKey, useLang } from '../../i18n';
 import { navigate } from '../../router';
 import { canRecord, type Clip, recordAudio, type Recording } from '../../speech';
@@ -298,6 +299,9 @@ export default function Report({ me }: { me: Me }) {
           value={text}
           onInput={(event) => setText((event.currentTarget).value)}
         />
+        <button type="button" class="btn btn-ghost btn-small example-btn" onClick={() => setText(DEMO_REPORTS[me.site.industry].text[lang])}>
+          {t('report.example')}
+        </button>
         <LanguageNudge text={text} />
       </div>
 

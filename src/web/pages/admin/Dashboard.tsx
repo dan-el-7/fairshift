@@ -5,7 +5,7 @@ import { Icon, type IconName } from '../../components/Icon';
 import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { t, type TKey } from '../../i18n';
-import { useApiData } from '../../useApiData';
+import { LIVE_REFRESH_MS, useApiData } from '../../useApiData';
 import { SEVERITIES } from './shared';
 
 type Series = AdminOverview['attendance14d'];
@@ -146,7 +146,7 @@ function dashboardSpeech(overview: AdminOverview): string {
 }
 
 export default function Dashboard() {
-  const overview = useApiData<AdminOverview>('/api/admin/overview');
+  const overview = useApiData<AdminOverview>('/api/admin/overview', { refreshMs: LIVE_REFRESH_MS });
   const data = overview.data;
 
   return (

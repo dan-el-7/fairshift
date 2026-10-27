@@ -2335,3 +2335,10 @@ legend {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
+
+/* "Use an example report": a quiet link-style button under the description box. */
+.example-btn {
+  justify-self: start;
+  margin-top: var(--space-2);
+  color: var(--primary-strong-text);
+}
