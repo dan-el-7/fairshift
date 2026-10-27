@@ -5,14 +5,14 @@
  */
 
 .ob-root {
-  --ob-base: #f6f7f9;
-  --ob-text: #0f172a;
-  --ob-muted: #475569;
-  --ob-card-bg: rgba(255, 255, 255, 0.55);
-  --ob-card-border: rgba(255, 255, 255, 0.75);
-  --ob-blob-alpha: 0.35;
-  --ob-tint: rgba(15, 118, 110, 0.12);
-  --ob-accent: #0b4f4a;
+  --ob-base: #fafafa;
+  --ob-text: #09090b;
+  --ob-muted: #52525b;
+  --ob-card-bg: rgba(255, 255, 255, 0.7);
+  --ob-card-border: rgba(9, 9, 11, 0.08);
+  --ob-blob-alpha: 0.22;
+  --ob-tint: rgba(79, 70, 229, 0.1);
+  --ob-accent: #3730a3;
   --ob-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0));
   --ob-focus: #2563eb;
 
@@ -28,27 +28,27 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .ob-root {
-    --ob-base: #0b1215;
-    --ob-text: #e6edf0;
-    --ob-muted: #a3b3ba;
-    --ob-card-bg: rgba(17, 27, 31, 0.55);
-    --ob-card-border: rgba(255, 255, 255, 0.12);
+    --ob-base: #09090b;
+    --ob-text: #ededef;
+    --ob-muted: #a1a1aa;
+    --ob-card-bg: rgba(17, 17, 19, 0.55);
+    --ob-card-border: rgba(255, 255, 255, 0.1);
     --ob-blob-alpha: 0.28;
-    --ob-tint: rgba(45, 212, 191, 0.14);
-    --ob-accent: #5eead4;
+    --ob-tint: rgba(139, 143, 249, 0.14);
+    --ob-accent: #a5a8ff;
     --ob-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
   }
 }
 
 :root[data-theme='dark'] .ob-root {
-  --ob-base: #0b1215;
-  --ob-text: #e6edf0;
-  --ob-muted: #a3b3ba;
-  --ob-card-bg: rgba(17, 27, 31, 0.55);
-  --ob-card-border: rgba(255, 255, 255, 0.12);
+  --ob-base: #09090b;
+  --ob-text: #ededef;
+  --ob-muted: #a1a1aa;
+  --ob-card-bg: rgba(17, 17, 19, 0.55);
+  --ob-card-border: rgba(255, 255, 255, 0.1);
   --ob-blob-alpha: 0.28;
-  --ob-tint: rgba(45, 212, 191, 0.14);
-  --ob-accent: #5eead4;
+  --ob-tint: rgba(139, 143, 249, 0.14);
+  --ob-accent: #a5a8ff;
   --ob-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
 }
 
@@ -78,7 +78,7 @@
 .ob-blob-teal {
   top: -18%;
   left: -22%;
-  background: radial-gradient(circle, #0f766e 0%, rgba(15, 118, 110, 0) 68%);
+  background: radial-gradient(circle, var(--blob-a) 0%, transparent 68%);
   --dx: 8vmax;
   --dy: 5vmax;
   animation-duration: 24s;
@@ -87,7 +87,7 @@
 .ob-blob-mint {
   top: 30%;
   right: -28%;
-  background: radial-gradient(circle, #2dd4bf 0%, rgba(45, 212, 191, 0) 66%);
+  background: radial-gradient(circle, var(--blob-b) 0%, transparent 66%);
   --dx: -7vmax;
   --dy: -6vmax;
   animation-duration: 28s;
@@ -96,7 +96,7 @@
 .ob-blob-indigo {
   bottom: -30%;
   left: 5%;
-  background: radial-gradient(circle, #6366f1 0%, rgba(99, 102, 241, 0) 66%);
+  background: radial-gradient(circle, var(--blob-c) 0%, transparent 66%);
   --dx: 6vmax;
   --dy: -8vmax;
   animation-duration: 30s;
@@ -107,7 +107,7 @@
   left: 38%;
   width: 55vmax;
   height: 55vmax;
-  background: radial-gradient(circle, #f59e0b 0%, rgba(245, 158, 11, 0) 66%);
+  background: radial-gradient(circle, var(--blob-d) 0%, transparent 66%);
   --dx: -5vmax;
   --dy: 7vmax;
   animation-duration: 22s;

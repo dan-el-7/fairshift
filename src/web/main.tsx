@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { App } from './app';
 import { applySavedTextSize } from './components/TextSizeToggle';
 import { applyTheme, savedTheme } from './theme';
+import '@fontsource-variable/inter';
 import './styles.css';
 import './qol.css';
 

@@ -43,17 +43,17 @@ export default function Home({ me }: { me: Me }) {
           <p class="muted">{t('home.site', { site: me.site.name })}</p>
         </div>
 
-        {data ? (
-          <div class="status-row">
-            <span class={`status-chip${open ? ' is-in' : ''}`}>
-              <span class="status-dot" aria-hidden="true" />
-              {statusText}
-            </span>
-            <SpeakButton text={statusText} />
-          </div>
-        ) : null}
-
-        <div>
+        {/* Status and the check-in button share one row, wrapping onto two on narrow screens. */}
+        <div class="greeting-actions">
+          {data ? (
+            <div class="status-row">
+              <span class={`status-chip${open ? ' is-in' : ''}`}>
+                <span class="status-dot" aria-hidden="true" />
+                {statusText}
+              </span>
+              <SpeakButton text={statusText} />
+            </div>
+          ) : null}
           <a class="btn btn-primary" href="#/w/attendance">
             <Icon name="checkin" size={20} />
             {t('home.tile.checkin')}

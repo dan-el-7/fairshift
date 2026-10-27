@@ -133,28 +133,58 @@ html.text-lg {
   outline-offset: 2px;
 }
 
-/* App-bar icon buttons: round, 48px, icon only. The names live in aria-label and title. */
+/*
+ * App-bar controls: language and text size form one segmented control (they are adjacent siblings),
+ * matching the log-out pill's 36px height and hairline. ::after keeps a 44px touch target.
+ * Names live in aria-label and title.
+ */
 .qol-lang-help,
 .qol-text-size {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
+  width: 40px;
+  height: 36px;
+  min-width: 40px;
   padding: 0;
-  border: 1px solid var(--border-strong, #7c8799);
-  border-radius: 999px;
-  background: var(--surface, #ffffff);
-  color: var(--text, #1a1a1a);
+  border: 1px solid var(--icon-border, #e4e4e7);
+  border-radius: 10px;
+  background: var(--icon-bg, #fafafa);
+  color: var(--muted, #5b6573);
   font: inherit;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.qol-lang-help::after,
+.qol-text-size::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.qol-lang-help svg {
+  width: 18px;
+  height: 18px;
+}
+
+.qol-lang-help + .qol-text-size {
+  margin-left: calc(-1 * var(--space-2, 8px) - 1px);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.qol-lang-help:has(+ .qol-text-size) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .qol-lang-help:hover,
 .qol-text-size:hover {
   background: var(--surface-2, #f1f4f6);
+  color: var(--text, #1a1a1a);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -208,14 +238,13 @@ html.text-lg {
 
 /* Text size toggle */
 .qol-text-size[aria-pressed="true"] {
-  border-color: var(--primary, #0b5d4b);
-  background: var(--primary, #0b5d4b);
-  color: var(--on-primary, #ffffff);
+  background: var(--primary-soft, #e6f4f1);
+  color: var(--primary-strong-text, #0b5d4b);
 }
 
 .qol-text-size-mark {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
 }

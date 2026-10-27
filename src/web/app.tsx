@@ -79,13 +79,18 @@ function pendingIntroRole(me: Me | null | undefined, dismissed: Role | null): Ro
 }
 
 /** Header with the brand, help and text size controls, and log out when signed in. */
-function AppHeader({ me }: { me: Me | null | undefined }) {
+function AppHeader({ me, wide }: { me: Me | null | undefined; wide: boolean }) {
   return (
-    <header class="app-header">
+    // `wide` matches main.main-wide, so the bar's contents line up with the page column.
+    <header class={wide ? 'app-header is-wide' : 'app-header'}>
       <a class="brand" href="#/">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
-            <path d="M5.5 12.5l4.2 4.2L18.5 7.5" />
+          {/* Logomark: an equals sign shifted out of line (fair + shift), cut out of a rounded square. */}
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor" focusable="false">
+            <path
+              fill-rule="evenodd"
+              d="M6.667 0h10.666a6.667 6.667 0 0 1 6.667 6.667v10.666a6.667 6.667 0 0 1-6.667 6.667H6.667a6.667 6.667 0 0 1-6.667-6.667V6.667a6.667 6.667 0 0 1 6.667-6.667zM6.6 7.3h6.8a1.7 1.7 0 0 1 0 3.4H6.6a1.7 1.7 0 0 1 0-3.4zM10.6 13.3h6.8a1.7 1.7 0 0 1 0 3.4h-6.8a1.7 1.7 0 0 1 0-3.4z"
+            />
           </svg>
         </span>
         <span class="brand-name">{t('app.name')}</span>
@@ -185,7 +190,7 @@ export function App() {
       >
         {t('nav.skip')}
       </a>
-      <AppHeader me={me} />
+      <AppHeader me={me} wide={root === 'a'} />
       <Overlay
         welcome={welcome}
         firstVisit={firstVisit}

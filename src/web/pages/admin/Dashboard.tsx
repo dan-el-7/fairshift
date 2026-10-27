@@ -95,7 +95,7 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
               <td>{worker.jobTitle}</td>
               <td>
                 <div class="stack-tight">
-                  <span>{t('admin.riskScore', { score: worker.quitRisk.score })}</span>
+                  <span class="risk-score">{t('admin.riskScore', { score: worker.quitRisk.score })}</span>
                   <span class={`badge badge-${worker.quitRisk.level}`}>{t(`risk.level.${worker.quitRisk.level}` as TKey)}</span>
                 </div>
               </td>
