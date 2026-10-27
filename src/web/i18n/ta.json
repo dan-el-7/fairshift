@@ -289,5 +289,8 @@
   "theme.auto": "தானாக",
   "theme.light": "வெளிர்",
   "theme.dark": "இருள்",
-  "footer.tagline": "FairShift · ஐ.நா. SDG 8: கண்ணியமான வேலை"
+  "footer.tagline": "FairShift · ஐ.நா. SDG 8: கண்ணியமான வேலை",
+  "report.progress.sending": "உங்கள் புகார் அனுப்பப்படுகிறது…",
+  "report.progress.sorting": "அதைப் படித்து, அவசரத்தின்படி வரிசைப்படுத்துகிறோம்…",
+  "report.progress.almost": "கிட்டத்தட்ட முடிந்தது. இதற்கு 20 விநாடிகள் வரை ஆகலாம். இந்தப் பக்கத்தைத் திறந்தே வைத்திருங்கள்."
 }

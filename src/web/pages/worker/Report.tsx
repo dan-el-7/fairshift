@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { LanguageNudge } from '../../components/LanguageNudge';
 import type { CreateReportRequest, CreateReportResponse, Me } from '../../../shared/api';
 import { INDUSTRIES } from '../../../shared/industries';
@@ -236,6 +236,31 @@ export default function Report({ me }: { me: Me }) {
         <Icon name="send" size={20} />
         {busy ? t('common.submitting') : t('report.submit')}
       </button>
+      {busy ? <SendingProgress /> : null}
     </form>
+  );
+}
+
+/** Seconds after which each progress message appears. Sorting by AI can take up to ~20 s. */
+const PROGRESS_STEPS: Array<{ after: number; key: TKey }> = [
+  { after: 0, key: 'report.progress.sending' },
+  { after: 3, key: 'report.progress.sorting' },
+  { after: 10, key: 'report.progress.almost' },
+];
+
+/** Reassures the reporter while the server translates and sorts the report, which can be slow. */
+function SendingProgress() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => window.clearInterval(timer);
+  }, []);
+  const step = [...PROGRESS_STEPS].reverse().find((s) => elapsed >= s.after) ?? PROGRESS_STEPS[0]!;
+  return (
+    <div class="send-progress" role="status" aria-live="polite">
+      <span class="send-progress-spinner" aria-hidden="true" />
+      <span>{t(step.key)}</span>
+    </div>
   );
 }

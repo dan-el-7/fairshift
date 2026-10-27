@@ -251,7 +251,7 @@ The Cloud Run service account needs access to Firestore and Vertex AI, since bot
 
 ## Testing
 
-- **381 tests in 35 files**, run with `npm test` (Vitest).
+- **382 tests in 36 files**, run with `npm test` (Vitest).
 - **Store** (`tests/server/store`): one contract suite runs against the memory repo, the Redis repo and the Firestore repo. The Redis and Firestore runs use in-memory fakes of their clients. The suite also checks that stored reports and feedback contain no worker id, and that the demo seed is claimed once.
 - **Services and config** (`tests/server/services`, `tests/server/config.test.ts`): Gemini answers (valid, redacted, unknown category mapped to `other`, errors, timeout and malformed JSON falling back to the heuristic), audio without AI, API key and Vertex client selection, the required `SESSION_SECRET` on Vercel and Cloud Run, the derived passport key, and store selection.
 - **Domain rules** (`tests/server/domain`): payroll arithmetic, attendance hours and night overlap, the four fatigue rules, quit-risk factors, QR token windows, anonymity (case codes, PII masking, feedback aggregation and dedupe key), passports (sign and verify), time and IST day buckets, and keyword triage.

@@ -2022,3 +2022,35 @@ legend {
     white-space: nowrap;
   }
 }
+
+/* Report sending progress: a calm spinner and a message that advances while the AI sorts it. */
+.send-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9375rem;
+}
+.send-progress-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: send-spin 0.9s linear infinite;
+}
+@keyframes send-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .send-progress-spinner {
+    animation-duration: 2.4s;
+  }
+}
+

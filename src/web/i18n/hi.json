@@ -289,5 +289,8 @@
   "theme.auto": "अपने-आप",
   "theme.light": "हल्की",
   "theme.dark": "गहरी",
-  "footer.tagline": "FairShift · संयुक्त राष्ट्र SDG 8: सम्मानजनक काम"
+  "footer.tagline": "FairShift · संयुक्त राष्ट्र SDG 8: सम्मानजनक काम",
+  "report.progress.sending": "आपकी शिकायत भेजी जा रही है…",
+  "report.progress.sorting": "इसे पढ़ा जा रहा है और ज़रूरत के हिसाब से छाँटा जा रहा है…",
+  "report.progress.almost": "बस हो गया। इसमें 20 सेकंड तक लग सकते हैं। कृपया यह पेज खुला रखें।"
 }

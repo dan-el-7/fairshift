@@ -289,5 +289,8 @@
   "theme.auto": "Auto",
   "theme.light": "Light",
   "theme.dark": "Dark",
-  "footer.tagline": "FairShift · UN SDG 8: decent work"
+  "footer.tagline": "FairShift · UN SDG 8: decent work",
+  "report.progress.sending": "Sending your report…",
+  "report.progress.sorting": "Reading it and sorting it by urgency…",
+  "report.progress.almost": "Almost done. This can take up to 20 seconds. Please keep this page open."
 }
