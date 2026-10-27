@@ -235,7 +235,7 @@ The Cloud Run service account needs access to Firestore and Vertex AI, since bot
 
 ## Testing
 
-- **259 tests in 26 files**, run with `npm test` (Vitest).
+- **259 tests in 25 files**, run with `npm test` (Vitest).
 - **Domain rules** (`tests/server/domain`): payroll arithmetic, attendance hours and night overlap, the four fatigue rules, quit-risk factors, QR token windows, anonymity (case codes, PII masking, feedback aggregation and dedupe key), passports (sign and verify), time and IST day buckets, and keyword triage.
 - **API** (`tests/server/api`): authentication and roles, check-in and check-out, pay, reports (including the anonymity guarantees and the 422 for audio without AI), feedback, passports, admin routes (including site scoping and the at-risk list), security headers (CSP and permissions policy), the 60 and 10 per-minute rate limits, and the 2 MB body limit.
 - **Web** (`tests/web`): the router, i18n (Hindi and Tamil have exactly the English keys, placeholders match, and every hazard category has a label), language persistence, Indian paise formatting, the landing, admin and payslip screens, and axe-core accessibility checks on the landing, worker home and payslip screens. The colour-contrast rule is turned off in that check.
