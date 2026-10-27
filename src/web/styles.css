@@ -1161,11 +1161,11 @@ legend {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* Overtime and night badges: under the date, as a subtitle. */
+/* Overtime and night badges: bottom right, under the hours they explain. */
 .shift-meta > .badge,
 .shift-meta > .tag {
-  grid-column: 1;
-  justify-self: start;
+  grid-column: 2;
+  justify-self: end;
 }
 
 /* Pay: receipt style */
