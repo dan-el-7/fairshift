@@ -418,7 +418,11 @@ export function Onboarding({ onDone, mode = 'first', role = null }: OnboardingPr
   // Focus moves to the first actionable element of each step (marked data-autofocus).
   useEffect(() => {
     if (exitingRef.current) return;
-    dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    // Move focus for screen readers without painting the keyboard ring for people who tapped;
+    // the ring still appears as soon as someone presses Tab. (focusVisible is not in TS's DOM types yet.)
+    dialogRef.current
+      ?.querySelector<HTMLElement>('[data-autofocus]')
+      ?.focus({ preventScroll: true, focusVisible: false } as FocusOptions);
   }, [step, index]);
 
   const stepOf = copy.stepOf.replace('{n}', String(index + 1)).replace('{total}', String(slideCount));
