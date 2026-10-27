@@ -54,12 +54,12 @@ function PassportForm({ worker }: { worker: WorkerSummary }) {
   }
 
   return (
-    <form class="stack" onSubmit={submit}>
+    <form class="stack" onSubmit={(event) => void submit(event)}>
       <div class="field">
         <label class="field-label" for={`${base}-kind`}>
           {t('admin.passport.kind')}
         </label>
-        <select id={`${base}-kind`} value={kind} onChange={(event) => setKind((event.currentTarget as HTMLSelectElement).value as PassportKind)}>
+        <select id={`${base}-kind`} value={kind} onChange={(event) => setKind((event.currentTarget).value as PassportKind)}>
           {KINDS.map((value) => (
             <option key={value} value={value}>
               {t(`passport.kind.${value}` as TKey)}
@@ -77,7 +77,7 @@ function PassportForm({ worker }: { worker: WorkerSummary }) {
           required
           maxLength={120}
           value={title}
-          onInput={(event) => setTitle((event.currentTarget as HTMLInputElement).value)}
+          onInput={(event) => setTitle((event.currentTarget).value)}
         />
       </div>
       <div class="field">
@@ -91,7 +91,7 @@ function PassportForm({ worker }: { worker: WorkerSummary }) {
           step={0.5}
           inputMode="decimal"
           value={hours}
-          onInput={(event) => setHours((event.currentTarget as HTMLInputElement).value)}
+          onInput={(event) => setHours((event.currentTarget).value)}
         />
       </div>
       <button type="submit" class="btn btn-primary" disabled={busy}>

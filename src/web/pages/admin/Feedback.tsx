@@ -8,7 +8,7 @@ import { t, type TKey } from '../../i18n';
 import { useApiData } from '../../useApiData';
 import { oneDecimal } from './shared';
 
-const DIMENSIONS: Array<{ key: keyof FeedbackRatings; label: TKey }> = [
+const DIMENSIONS: { key: keyof FeedbackRatings; label: TKey }[] = [
   { key: 'safety', label: 'admin.feedback.safety' },
   { key: 'fairness', label: 'admin.feedback.fairness' },
   { key: 'respect', label: 'admin.feedback.respect' },
@@ -16,7 +16,7 @@ const DIMENSIONS: Array<{ key: keyof FeedbackRatings; label: TKey }> = [
 ];
 
 function isInsufficient(value: AdminFeedback): value is { insufficient: true; count: number } {
-  return 'insufficient' in value && value.insufficient === true;
+  return 'insufficient' in value && value.insufficient;
 }
 
 export default function Feedback() {

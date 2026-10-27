@@ -164,26 +164,46 @@ export function speak(text: string, lang: Language): void {
   });
 }
 
+/** A finished voice note: audio as base64 (no data: prefix) and a bare MIME type. */
+export interface Clip {
+  base64: string;
+  mime: string;
+}
+
+/** A recording in progress. Its end is reported through RecordOptions.onFinished, for any reason. */
 export interface Recording {
-  /** Stops recording and resolves with the audio as base64 (no data: prefix) and a bare MIME type. */
-  stop(): Promise<{ base64: string; mime: string }>;
+  /** Ends the recording now. onFinished then delivers the clip. */
+  stop(): void;
+  /** Ends the recording and throws the audio away. onFinished is not called. */
+  cancel(): void;
+}
+
+export interface RecordOptions {
+  /** Time limit in ms; the recording stops itself when it is reached. Default 60 s. */
+  maxMs?: number;
+  /** Aborting before the microphone is granted releases the late stream and rejects the request. */
+  signal?: AbortSignal;
+  /** Called once when the recording ends: stopped by the user, the time limit, or an error (clip null). */
+  onFinished: (clip: Clip | null) => void;
 }
 
 export function canRecord(): boolean {
+  // Typed as always present, but browsers without media devices leave it undefined.
+  const devices = typeof navigator === 'undefined' ? undefined : (navigator.mediaDevices as MediaDevices | undefined);
   return (
     typeof window !== 'undefined' &&
     typeof MediaRecorder !== 'undefined' &&
     typeof navigator !== 'undefined' &&
-    !!navigator.mediaDevices?.getUserMedia
+    !!devices?.getUserMedia
   );
 }
 
-function blobToBase64(blob: Blob): Promise<{ base64: string; mime: string }> {
+function blobToBase64(blob: Blob): Promise<Clip> {
   const mime = (blob.type || 'audio/webm').split(';')[0] ?? 'audio/webm';
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const dataUrl = String(reader.result ?? '');
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
       const comma = dataUrl.indexOf(',');
       resolve({ base64: comma >= 0 ? dataUrl.slice(comma + 1) : '', mime });
     };
@@ -192,41 +212,58 @@ function blobToBase64(blob: Blob): Promise<{ base64: string; mime: string }> {
   });
 }
 
-/** Starts a microphone recording that stops itself after maxMs. Throws when recording is unsupported or denied. */
-export async function recordAudio(maxMs = 60000): Promise<Recording> {
+/**
+ * Starts a microphone recording. Throws when recording is unsupported, denied, or aborted while the
+ * permission prompt was open. Every ending reaches onFinished exactly once, except after cancel().
+ */
+export async function recordAudio({ maxMs = 60000, signal, onFinished }: RecordOptions): Promise<Recording> {
   if (!canRecord()) throw new Error('Recording is not supported');
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  if (signal?.aborted) {
+    stream.getTracks().forEach((track) => track.stop());
+    throw new DOMException('Recording was cancelled', 'AbortError');
+  }
   const preferred = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported(m));
   const recorder = preferred ? new MediaRecorder(stream, { mimeType: preferred }) : new MediaRecorder(stream);
   const chunks: Blob[] = [];
   const releaseMic = () => stream.getTracks().forEach((track) => track.stop());
+  let cancelled = false;
+  let reported = false;
+  const report = (clip: Clip | null) => {
+    if (cancelled || reported) return;
+    reported = true;
+    onFinished(clip);
+  };
 
-  const finished = new Promise<{ base64: string; mime: string }>((resolve, reject) => {
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-    recorder.onstop = () => {
-      releaseMic();
-      const blob = new Blob(chunks, { type: recorder.mimeType || preferred || 'audio/webm' });
-      blobToBase64(blob).then(resolve, reject);
-    };
-    recorder.onerror = () => {
-      releaseMic();
-      reject(new Error('Recording failed'));
-    };
-  });
-  finished.catch(() => undefined);
+  recorder.ondataavailable = (event) => {
+    if (event.data.size > 0) chunks.push(event.data);
+  };
+  recorder.onstop = () => {
+    releaseMic();
+    if (cancelled) return;
+    const blob = new Blob(chunks, { type: recorder.mimeType || (preferred ?? 'audio/webm') });
+    blobToBase64(blob).then(report, () => report(null));
+  };
+  recorder.onerror = () => {
+    releaseMic();
+    report(null);
+  };
 
   recorder.start(1000);
-  const timer = setTimeout(() => {
+  const timer = setTimeout(() => stop(), maxMs);
+
+  function stop(): void {
+    clearTimeout(timer);
     if (recorder.state !== 'inactive') recorder.stop();
-  }, maxMs);
+  }
 
   return {
-    stop: () => {
+    stop,
+    cancel: () => {
+      cancelled = true;
       clearTimeout(timer);
+      releaseMic();
       if (recorder.state !== 'inactive') recorder.stop();
-      return finished;
     },
   };
 }

@@ -58,7 +58,7 @@ describe('admin reports', () => {
   it('lists only reports for the admin site, with overdue flags', async () => {
     const t = await makeTestApp();
     const cookie = await login(t, ADMIN_SKYLINE);
-    const reports = await json<Array<Report & { overdue: boolean }>>(
+    const reports = await json<(Report & { overdue: boolean })[]>(
       await send(t, 'GET', '/api/admin/reports', { cookie }),
     );
     expect(reports.length).toBeGreaterThan(0);

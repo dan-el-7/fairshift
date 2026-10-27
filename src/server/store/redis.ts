@@ -23,6 +23,10 @@ export interface KvClient {
   /** Adds a member. Resolves to 1 when it was new, 0 when it was already present. */
   sadd(key: string, member: string): Promise<number>;
   smembers(key: string): Promise<string[]>;
+  /** Removes a member. Resolves to 1 when it was present, 0 otherwise. */
+  srem(key: string, member: string): Promise<number>;
+  /** Deletes a key. Missing keys are not an error. */
+  del(key: string): Promise<unknown>;
   /** Deletes every key starting with `prefix`. Used to refresh the demo data. */
   deletePrefix(prefix: string): Promise<number>;
   /** Sends many writes in as few round trips as possible. Optional: falls back to one call per write. */
@@ -30,7 +34,11 @@ export interface KvClient {
 }
 
 /** A buffered write: the only commands the store's save methods use. */
-export type WriteOp = ['set', string, string] | ['hset', string, string, string] | ['sadd', string, string];
+export type WriteOp =
+  | ['set', string, string]
+  | ['hset', string, string, string]
+  | ['sadd', string, string]
+  | ['del', string];
 
 /** Upstash accepts large pipelines, but smaller chunks keep each request well under its body limit. */
 const PIPELINE_CHUNK = 200;
@@ -54,17 +62,19 @@ export function createUpstashKv(url: string, token: string): KvClient {
   return {
     get: (key) => redis.get<string>(key),
     set: (key, value) => redis.set(key, value),
-    setnx: async (key, value) => Number(await redis.setnx(key, value)),
+    setnx: (key, value) => redis.setnx(key, value),
     hset: (key, field, value) => redis.hset(key, { [field]: value }),
     hgetall: async (key) => hashToRecord(await redis.hgetall(key)),
-    sadd: async (key, member) => Number(await redis.sadd(key, member)),
-    smembers: async (key) => (await redis.smembers(key)) as string[],
+    sadd: (key, member) => redis.sadd(key, member),
+    smembers: (key) => redis.smembers(key),
+    srem: (key, member) => redis.srem(key, member),
+    del: (key) => redis.del(key),
     async deletePrefix(prefix) {
       let cursor = '0';
       let deleted = 0;
       do {
         const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: 500 });
-        cursor = String(next);
+        cursor = next;
         if (keys.length > 0) deleted += await redis.del(...keys);
       } while (cursor !== '0');
       return deleted;
@@ -75,6 +85,7 @@ export function createUpstashKv(url: string, token: string): KvClient {
         for (const op of ops.slice(i, i + PIPELINE_CHUNK)) {
           if (op[0] === 'set') pipe.set(op[1], op[2]);
           else if (op[0] === 'hset') pipe.hset(op[1], { [op[2]]: op[3] });
+          else if (op[0] === 'del') pipe.del(op[1]);
           else pipe.sadd(op[1], op[2]);
         }
         await pipe.exec();
@@ -96,22 +107,30 @@ export function bufferWrites(kv: KvClient): KvClient & { flush(): Promise<void> 
     smembers: (key) => kv.smembers(key),
     setnx: (key, value) => kv.setnx(key, value),
     deletePrefix: (prefix) => kv.deletePrefix(prefix),
-    async set(key, value) {
+    set(key, value) {
       queue.push(['set', key, value]);
+      return Promise.resolve();
     },
-    async hset(key, field, value) {
+    hset(key, field, value) {
       queue.push(['hset', key, field, value]);
+      return Promise.resolve();
     },
-    async sadd(key, member) {
+    sadd(key, member) {
       queue.push(['sadd', key, member]);
-      return 1;
+      return Promise.resolve(1);
     },
+    del(key) {
+      queue.push(['del', key]);
+      return Promise.resolve(1);
+    },
+    srem: (key, member) => kv.srem(key, member),
     async flush() {
       const ops = queue.splice(0);
       if (kv.writeMany) return kv.writeMany(ops);
       for (const op of ops) {
         if (op[0] === 'set') await kv.set(op[1], op[2]);
         else if (op[0] === 'hset') await kv.hset(op[1], op[2], op[3]);
+        else if (op[0] === 'del') await kv.del(op[1]);
         else await kv.sadd(op[1], op[2]);
       }
     },
@@ -128,6 +147,7 @@ export interface RedisRepo extends Repo {
   clear(): Promise<void>;
 }
 
+const openLockKey = (workerId: string): string => `fs:open-shift:${workerId}`;
 const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const byCheckIn = (a: Shift, b: Shift): number => (a.checkIn < b.checkIn ? -1 : a.checkIn > b.checkIn ? 1 : 0);
 
@@ -141,11 +161,13 @@ const byCheckIn = (a: Shift, b: Shift): number => (a.checkIn < b.checkIn ? -1 : 
  *   report-code:{caseCode}    report id
  *   feedback:{siteId}:{month} hash id -> response   feedback-months:{siteId} set of months
  *   feedback-keys             set of dedupe keys
+ *   open-shift:{workerId}     id of the worker's open shift (check-in lock, see startShift)
  *   passport:{workerId}       hash id -> entry
  *   seeded                    timestamp of the one-time demo seed
  * Reports and feedback are stored exactly as the memory repo keeps them: no worker id.
  */
 export function createRedisRepo(kv: KvClient): RedisRepo {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the stored type; JSON.parse is untyped
   const json = <T>(text: string): T => JSON.parse(text) as T;
   const values = <T>(hash: Record<string, string>): T[] => Object.values(hash).map((v) => json<T>(v));
 
@@ -157,6 +179,21 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
   async function readSites(ids: string[]): Promise<Site[]> {
     const rows = await Promise.all(ids.map((id) => kv.get(`fs:site:${id}`)));
     return rows.flatMap((r) => (r === null ? [] : [json<Site>(r)]));
+  }
+
+  async function openShiftOf(workerId: string): Promise<Shift | null> {
+    const open = values<Shift>(await kv.hgetall(`fs:shifts:${workerId}`)).find((s) => s.checkOut === null);
+    return open ?? null;
+  }
+
+  async function saveShiftRecord(shift: Shift): Promise<void> {
+    await kv.hset(`fs:shifts:${shift.workerId}`, shift.id, JSON.stringify(shift));
+    await kv.sadd('fs:worker-ids', shift.workerId);
+    // The lock follows the open shift: present while it is open, removed when it is closed.
+    // Closing removes it without checking the id, which is safe because check-out only closes
+    // the worker's current open shift.
+    if (shift.checkOut === null) await kv.set(openLockKey(shift.workerId), shift.id);
+    else await kv.del(openLockKey(shift.workerId));
   }
 
   return {
@@ -209,13 +246,14 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
         .filter((s) => sinceMs === null || Date.parse(s.checkIn) >= sinceMs)
         .sort(byCheckIn);
     },
-    async getOpenShift(workerId) {
-      const open = values<Shift>(await kv.hgetall(`fs:shifts:${workerId}`)).find((s) => s.checkOut === null);
-      return open ?? null;
-    },
-    async saveShift(shift) {
-      await kv.hset(`fs:shifts:${shift.workerId}`, shift.id, JSON.stringify(shift));
-      await kv.sadd('fs:worker-ids', shift.workerId);
+    getOpenShift: openShiftOf,
+    saveShift: saveShiftRecord,
+    async startShift(shift) {
+      if ((await openShiftOf(shift.workerId)) !== null) return false;
+      // SETNX is the atomic gate: of two concurrent check-ins, only one creates the lock.
+      if ((await kv.setnx(openLockKey(shift.workerId), shift.id)) === 0) return false;
+      await saveShiftRecord(shift);
+      return true;
     },
 
     async listReports(siteId) {
@@ -243,6 +281,9 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
     },
     async claimDedupeKey(key) {
       return (await kv.sadd('fs:feedback-keys', key)) === 1;
+    },
+    async releaseDedupeKey(key) {
+      await kv.srem('fs:feedback-keys', key);
     },
 
     async listPassport(workerId) {

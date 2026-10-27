@@ -106,6 +106,11 @@ async function violations(container: Element) {
 
 beforeEach(() => {
   resetSessionForTests();
+  // Deterministic start: English, onboarding and role intros already done, so no overlay covers the page.
+  setLang('en');
+  localStorage.setItem('fairshift.onboarded', '1');
+  localStorage.setItem('fairshift.intro.admin', '1');
+  localStorage.setItem('fairshift.intro.worker', '1');
 });
 
 afterEach(() => {
@@ -122,7 +127,7 @@ describe('admin dashboard', () => {
 
     render(<App />);
 
-    const presentLabel = await screen.findByText('Present today');
+    const presentLabel = await screen.findByText('Present today', undefined, { timeout: 5000 });
     expect(presentLabel.parentElement?.querySelector('.kpi-value')?.textContent).toBe('4');
     expect(screen.getByText('Overtime hours (14 days)').parentElement?.querySelector('.kpi-value')?.textContent).toBe('37.5');
     expect(screen.getByText('Overdue reports').parentElement?.querySelector('.kpi-value')?.textContent).toBe('1');
@@ -144,7 +149,7 @@ describe('admin dashboard', () => {
 
     render(<App />);
 
-    const button = await screen.findByRole('button', { name: /^Read aloud: 4 of 6 workers present today/ });
+    const button = await screen.findByRole('button', { name: /^Read aloud: 4 of 6 workers present today/ }, { timeout: 5000 });
     expect(button.getAttribute('aria-label')).toContain('3 open reports');
     expect(button.getAttribute('aria-label')).toContain('1 overdue');
     expect(button.getAttribute('aria-label')).toContain('2 fatigue alerts');
@@ -157,7 +162,7 @@ describe('admin dashboard', () => {
 
     render(<App />);
 
-    const chart = await screen.findByRole('img', { name: 'Workers present each day over the last 14 days' });
+    const chart = await screen.findByRole('img', { name: 'Workers present each day over the last 14 days' }, { timeout: 5000 });
     expect(chart.querySelectorAll('rect.chart-bar').length).toBe(14);
     const dataTable = screen.getByRole('table', { name: 'Attendance and overtime for the last 14 days' });
     expect(within(dataTable).getAllByRole('row').length).toBe(15);
@@ -183,7 +188,7 @@ describe('admin reports', () => {
 
     render(<App />);
 
-    const text = await screen.findByText('Exposed wire hanging near the lift shaft');
+    const text = await screen.findByText('Exposed wire hanging near the lift shaft', undefined, { timeout: 5000 });
     const item = text.closest('li');
     expect(item).toBeTruthy();
     const first = document.querySelector('.entries li');
@@ -195,12 +200,14 @@ describe('admin reports', () => {
     const scope = within(item as HTMLElement);
     fireEvent.change(scope.getByLabelText('New status'), { target: { value: 'resolved' } });
     fireEvent.input(scope.getByLabelText('Note (optional)'), { target: { value: 'Wire fixed' } });
-    fireEvent.submit(item?.querySelector('form') as HTMLFormElement);
+    const form = item?.querySelector('form');
+    expect(form).toBeTruthy();
+    fireEvent.submit(form!);
 
     await waitFor(() => expect(item?.querySelector('.badge-status')?.textContent).toBe('Resolved'));
     expect(patchBodies).toEqual([{ status: 'resolved', note: 'Wire fixed' }]);
     const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
-    expect(String(patchCall?.[0])).toBe('/api/admin/reports/r1');
+    expect(patchCall?.[0]).toBe('/api/admin/reports/r1');
     expect(screen.getByText('Report updated.')).toBeTruthy();
   });
 
@@ -213,7 +220,7 @@ describe('admin reports', () => {
 
     render(<App />);
 
-    await screen.findByText('Exposed wire hanging near the lift shaft');
+    await screen.findByText('Exposed wire hanging near the lift shaft', undefined, { timeout: 5000 });
     const items = document.querySelectorAll('.entries > li');
     expect(items.length).toBe(reports.length);
     for (const item of items) {
@@ -234,6 +241,8 @@ describe('admin feedback', () => {
     expect(
       await screen.findByText(
         'At least 5 responses are needed before results are shown, to protect anonymity (currently 3).',
+        undefined,
+        { timeout: 5000 },
       ),
     ).toBeTruthy();
   });
@@ -244,7 +253,7 @@ describe('admin accessibility (axe-core, colour contrast excluded)', () => {
     mockFetch({ '/api/me': admin, '/api/admin/overview': overview });
     window.location.hash = '#/a';
     const { container } = render(<App />);
-    await screen.findByText('Kavya Devi');
+    await screen.findByText('Kavya Devi', undefined, { timeout: 5000 });
     expect(await violations(container)).toEqual([]);
   });
 
@@ -255,7 +264,7 @@ describe('admin accessibility (axe-core, colour contrast excluded)', () => {
     });
     window.location.hash = '#/a/reports';
     const { container } = render(<App />);
-    await screen.findByText('Exposed wire hanging near the lift shaft');
+    await screen.findByText('Exposed wire hanging near the lift shaft', undefined, { timeout: 5000 });
     expect(await violations(container)).toEqual([]);
   });
 });

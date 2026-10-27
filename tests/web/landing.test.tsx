@@ -50,6 +50,6 @@ describe('landing page', () => {
 
     await waitFor(() => expect(window.location.hash).toBe('#/w'));
     const demoCall = fetchMock.mock.calls.find(([url]) => url === '/api/auth/demo');
-    expect(JSON.parse(String((demoCall?.[1] as RequestInit | undefined)?.body))).toEqual({ personaId: 'worker-ravi' });
+    expect(JSON.parse(demoCall?.[1]?.body as string)).toEqual({ personaId: 'worker-ravi' });
   });
 });

@@ -1,7 +1,7 @@
 import type { IndustryConfig, Severity } from '../../shared/types';
 
 /** Ordered by precedence: the first matching category (within the industry's list) wins. */
-const CATEGORY_KEYWORDS: Array<[string, string[]]> = [
+const CATEGORY_KEYWORDS: [string, string[]][] = [
   ['harassment', ['harass', 'abuse', 'threat', 'insult', 'molest', 'bully', 'shout', 'उत्पीड़न', 'துன்புறுத்', 'गाली']],
   ['electrical', ['electr', 'wire', 'wiring', 'shock', 'spark', 'short circuit', 'current', 'bijli', 'बिजली', 'करंट', 'மின்']],
   ['fire_safety', ['fire', 'smoke', 'extinguish', 'alarm', 'आग', 'தீ']],

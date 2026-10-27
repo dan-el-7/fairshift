@@ -48,7 +48,7 @@ describe('detectFatigue', () => {
     const flags = detectFatigue([onDay(16, 8, 9), onDay(17, 2, 8)], now);
     const rest = flags.find((f) => f.rule === 'short_rest');
     expect(rest?.severity).toBe('medium');
-    expect(rest?.detail['restHours']).toBe(9);
+    expect(rest?.detail.restHours).toBe(9);
   });
 
   it('does not flag a gap of exactly 10 h', () => {

@@ -17,6 +17,27 @@ describe('POST /api/feedback', () => {
     expect(second.status).toBe(409);
   });
 
+  it('lets the worker retry when the save fails, and stores exactly one response', async () => {
+    const t = await makeTestApp();
+    const cookie = await login(t, WORKER_SKYLINE);
+    const realSave = t.repo.saveFeedback.bind(t.repo);
+    let failedOnce = false;
+    t.repo.saveFeedback = async (response) => {
+      if (!failedOnce) {
+        failedOnce = true;
+        throw new Error('store unavailable');
+      }
+      await realSave(response);
+    };
+    const before = (await t.repo.listFeedback('site-skyline')).length;
+
+    const first = await send(t, 'POST', '/api/feedback', { cookie, body: { ratings } });
+    expect(first.status).toBe(500);
+    const retry = await send(t, 'POST', '/api/feedback', { cookie, body: { ratings } });
+    expect(retry.status).toBe(200);
+    expect(await t.repo.listFeedback('site-skyline')).toHaveLength(before + 1);
+  });
+
   it('stores the response without any worker id', async () => {
     const t = await makeTestApp();
     const before = (await t.repo.listFeedback('site-skyline')).length;

@@ -64,6 +64,7 @@ export function reportRoutes(deps: Deps): Hono<AppEnv> {
     const category =
       supplied ?? (cfg.hazardCategories.includes(analysis.category) ? analysis.category : 'other');
 
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty AI transcript must fall back to the reporter's own text
     const text = redactPII(analysis.text || body.text || '');
     const report: Report = {
       id: randomUUID(),

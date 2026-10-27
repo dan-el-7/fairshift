@@ -55,7 +55,7 @@ export function generatePassportKeys(): {
   return {
     privateKey,
     publicKey,
-    privatePem: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
-    publicPem: publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+    privatePem: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    publicPem: publicKey.export({ type: 'spki', format: 'pem' }),
   };
 }

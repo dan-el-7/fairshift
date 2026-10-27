@@ -200,7 +200,8 @@ npm start          # serves the app and the API on http://localhost:8080
 npm run dev        # API on :8080 (tsx watch) plus the Vite dev server, which proxies /api
 npm test           # vitest run
 npm run typecheck  # server and web TypeScript
-npm run lint       # eslint
+npm run lint       # eslint, type-aware strict rules, zero warnings allowed
+npm run check      # typecheck, lint and tests in one go
 ```
 
 Without any environment variables, the app uses the in-memory store, keyword triage and a random session secret. This is the setup the tests and the demo use.
@@ -212,6 +213,7 @@ Environment variables (from `src/server/config.ts` and `.env.example`):
 | `PORT` | `8080` | HTTP port. Cloud Run sets this. |
 | `SESSION_SECRET` | random per process (local only) | HMAC key for session JWTs, QR tokens, feedback dedupe keys and the passport signing key. **Required on Vercel and Cloud Run**: the server refuses to start without it. |
 | `STORE` | `redis` when a Redis endpoint is set, else `memory` | `memory`, `redis` or `firestore`. Any other value stops startup. |
+| `DEMO_DAILY_RESET` | `false` | Public demo only: `true` wipes ALL data, including submitted reports, once per IST day and reseeds the demo. Off, the demo is seeded once and never cleared. Redis only. |
 | `KV_REST_API_URL`, `KV_REST_API_TOKEN` | unset | Upstash Redis REST endpoint. Set automatically by the Vercel Marketplace integration. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | unset | Same endpoint under the Upstash names. Used when the `KV_` names are absent. |
 | `GEMINI_API_KEY` | unset | Gemini Developer API key from Google AI Studio (`GOOGLE_API_KEY` also accepted). When set, report triage uses Gemini. Takes precedence over Vertex AI. |
@@ -259,6 +261,7 @@ The Cloud Run service account needs access to Firestore and Vertex AI, since bot
 - **Web** (`tests/web`): the router, i18n (Hindi and Tamil have exactly the English keys, placeholders match, and every hazard category has a label), language persistence, Indian paise formatting, the landing, admin and payslip screens, and axe-core accessibility checks on the landing, worker home and payslip screens. The colour-contrast rule is turned off in that check.
 - **Not covered by automated tests:** live calls to Upstash Redis, Firestore and Gemini. Those paths are exercised against fakes only, so the first real deploy is the first live check.
 - CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests and the build on every push and pull request.
+- **Code quality gates:** TypeScript `strict` plus `noUncheckedIndexedAccess`, `noImplicitReturns`, `noUnusedLocals` and `noUnusedParameters`; ESLint `strictTypeChecked` and `stylisticTypeChecked` with complexity (15), function-length (120) and file-length (350) limits, and `--max-warnings=0`. `.editorconfig` pins UTF-8, LF and 2-space indentation.
 
 ## SDG 8 alignment
 

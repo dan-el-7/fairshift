@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { createApp } from './app';
 import type { AppEnv } from './middleware/auth';
-import { loadConfig, type ServerConfig } from './config';
+import { loadConfig, nonEmpty, type ServerConfig } from './config';
 import { createGenAiClient, createReportAi } from './services/ai';
 import { createTts } from './services/tts';
 import type { Repo } from './store/repo';
@@ -37,7 +37,7 @@ export async function buildAppWithConfig(env: NodeJS.ProcessEnv = process.env, o
   // One Gemini client serves both report triage and read-aloud.
   const client = createGenAiClient(config);
   const ai = createReportAi({ client: client ?? undefined, geminiModel: config.geminiModel });
-  const tts = client ? createTts({ client, kv, model: env.GEMINI_TTS_MODEL?.trim() || undefined }) : null;
+  const tts = client ? createTts({ client, kv, model: nonEmpty(env.GEMINI_TTS_MODEL?.trim()) }) : null;
 
   const app = createApp({ repo, ai, tts, config, webRoot: options.webRoot });
   return { app, config };
@@ -48,17 +48,21 @@ export async function buildApp(env: NodeJS.ProcessEnv = process.env, options: Bu
   return (await buildAppWithConfig(env, options)).app;
 }
 
-/** Opens the configured store and seeds the demo organisation when it is empty. */
-async function openRepo(config: ServerConfig, kv: KvClient | undefined): Promise<Repo> {
+/**
+ * Opens the configured store and seeds the demo organisation. Redis with DEMO_DAILY_RESET=true
+ * clears and reseeds once per IST day (public demo only: this wipes submitted reports too).
+ * Otherwise Redis is seeded only when it has never been seeded, and nothing is ever cleared.
+ */
+export async function openRepo(config: ServerConfig, kv: KvClient | undefined, now: Date = new Date()): Promise<Repo> {
   if (config.store === 'redis') {
     if (!kv) throw new Error('STORE=redis needs a Redis endpoint');
     const repo: RedisRepo = createRedisRepo(kv);
-    // The demo's shifts are generated relative to "today", so the shared demo refreshes once per
-    // IST day; otherwise dashboards would show stale attendance a few days after deployment.
-    const now = new Date();
     const today = istDay(now);
-    if ((await repo.seededDay()) !== today) {
-      await repo.clear();
+    const seeded = await repo.seededDay();
+    // The demo's shifts are generated relative to "today", so the daily reset keeps dashboards fresh.
+    const needsSeed = config.demoDailyReset ? seeded !== today : seeded === null;
+    if (needsSeed) {
+      if (config.demoDailyReset) await repo.clear();
       // Seed through a write buffer: a few pipelined round trips instead of hundreds. The seed is
       // deterministic, so two instances cold-starting together just write the same keys twice.
       const buffered = bufferWrites(kv);

@@ -33,6 +33,8 @@ export interface Repo {
   /** The worker's shift with no check-out time, if any. */
   getOpenShift(workerId: string): Promise<Shift | null>;
   saveShift(shift: Shift): Promise<void>;
+  /** Saves a new open shift only if the worker has none open. False when one already is. */
+  startShift(shift: Shift): Promise<boolean>;
 
   listReports(siteId: string): Promise<Report[]>;
   getReport(id: string): Promise<Report | null>;
@@ -46,6 +48,8 @@ export interface Repo {
    * Returns false when the key was already present.
    */
   claimDedupeKey(key: string): Promise<boolean>;
+  /** Frees a dedupe key claimed earlier, so the caller can retry after a failed save. */
+  releaseDedupeKey(key: string): Promise<void>;
 
   listPassport(workerId: string): Promise<PassportEntry[]>;
   savePassport(entry: PassportEntry): Promise<void>;

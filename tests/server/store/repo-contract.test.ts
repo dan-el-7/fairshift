@@ -139,6 +139,32 @@ describe.each(backends)('repo contract: $name', ({ make }) => {
     expect(await repo.listPassport(MEENA.id)).toEqual([]);
   });
 
+  it('releases a dedupe key so it can be claimed again', async () => {
+    const repo = await seeded();
+    expect(await repo.claimDedupeKey('key-retry')).toBe(true);
+    expect(await repo.claimDedupeKey('key-retry')).toBe(false);
+    await repo.releaseDedupeKey('key-retry');
+    expect(await repo.claimDedupeKey('key-retry')).toBe(true);
+  });
+
+  it('starts at most one open shift per worker when starts race, and a check-out frees the worker', async () => {
+    const repo = await seeded();
+    const first: Shift = { id: 'shift-race-1', workerId: MEENA.id, siteId: 'site-a', checkIn: '2026-10-27T04:00:00.000Z', checkOut: null, method: 'qr' };
+    const second: Shift = { ...first, id: 'shift-race-2', method: 'geo' };
+
+    const results = await Promise.all([repo.startShift(first), repo.startShift(second)]);
+    expect([...results].sort()).toEqual([false, true]);
+    const open = (await repo.listShifts({ workerId: MEENA.id })).filter((s) => s.checkOut === null);
+    expect(open).toHaveLength(1);
+
+    const [current] = open;
+    if (!current) throw new Error('expected one open shift');
+    await repo.saveShift({ ...current, checkOut: '2026-10-27T08:00:00.000Z' });
+    const third: Shift = { ...second, id: 'shift-race-3', checkIn: '2026-10-27T09:00:00.000Z' };
+    expect(await repo.startShift(third)).toBe(true);
+    expect((await repo.getOpenShift(MEENA.id))?.id).toBe('shift-race-3');
+  });
+
   it('returns copies, so mutating a result never changes stored state', async () => {
     const repo = await seeded();
     const site = await repo.getSite('site-a');
@@ -184,6 +210,7 @@ describe('redis store specifics', () => {
         for (const op of ops) {
           if (op[0] === 'set') await kv.set(op[1], op[2]);
           else if (op[0] === 'hset') await kv.hset(op[1], op[2], op[3]);
+          else if (op[0] === 'del') await kv.del(op[1]);
           else await kv.sadd(op[1], op[2]);
         }
       },

@@ -34,10 +34,18 @@ export const bodySizeLimit: MiddlewareHandler = bodyLimit({
   onError: (c) => c.json({ error: 'request body too large' }, 413),
 });
 
-/** Client address for rate limiting: the first hop of X-Forwarded-For, or 'unknown'. */
+/**
+ * Client address for rate limiting, in order: X-Real-IP, X-Vercel-Forwarded-For, the first hop
+ * of X-Forwarded-For, then 'unknown'. Vercel sets these headers at its edge and overwrites any
+ * client-supplied value. Other hosts must run behind a proxy that does the same, or a client can
+ * send its own header and get a fresh rate-limit budget on every request.
+ */
 export function clientIp(c: Context): string {
-  const first = c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-  return first && first.length > 0 ? first : 'unknown';
+  for (const header of ['x-real-ip', 'x-vercel-forwarded-for', 'x-forwarded-for']) {
+    const ip = c.req.header(header)?.split(',')[0]?.trim();
+    if (ip) return ip;
+  }
+  return 'unknown';
 }
 
 export interface RateLimitOptions {
@@ -68,7 +76,7 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
 
     const key = `${options.name}|${clientIp(c)}`;
     const entry = counters.get(key);
-    const current = entry && entry.window === window ? entry : { window, count: 0 };
+    const current = entry?.window === window ? entry : { window, count: 0 };
     current.count += 1;
     counters.set(key, current);
 
@@ -78,5 +86,6 @@ export function rateLimit(options: RateLimitOptions): MiddlewareHandler {
       return c.json({ error: 'too many requests, slow down' }, 429);
     }
     await next();
+    return;
   };
 }

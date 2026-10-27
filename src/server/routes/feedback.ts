@@ -44,7 +44,13 @@ export function feedbackRoutes(deps: Deps): Hono<AppEnv> {
       ratings: body.ratings,
     };
     if (body.comment !== undefined && body.comment.length > 0) response.comment = redactPII(body.comment);
-    await deps.repo.saveFeedback(response);
+    try {
+      await deps.repo.saveFeedback(response);
+    } catch (err) {
+      // The save failed, so the worker has not submitted: free the month's key so a retry can succeed.
+      await deps.repo.releaseDedupeKey(key);
+      throw err;
+    }
     return c.json({ ok: true });
   });
 

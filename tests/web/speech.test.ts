@@ -27,7 +27,7 @@ const originalCreate = urlStatics.createObjectURL;
 const originalRevoke = urlStatics.revokeObjectURL;
 
 /** Installs a fake speechSynthesis with the given voices. */
-function installSynth(voices: Array<{ lang: string; name: string }>) {
+function installSynth(voices: { lang: string; name: string }[]) {
   const synth = {
     getVoices: () => voices,
     speak: vi.fn(),
@@ -74,7 +74,7 @@ describe('speak', () => {
 
     await vi.waitFor(() => expect(FakeAudio.instances).toHaveLength(1));
     expect(fetchMock).toHaveBeenCalledWith('/api/tts', expect.objectContaining({ method: 'POST' }));
-    expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toEqual({
+    expect(JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({
       text: 'नमस्ते, आप कैसे हैं',
       lang: 'hi',
     });
@@ -149,7 +149,7 @@ describe('speak', () => {
 
 describe('canSpeak', () => {
   it('is true when only server audio is available', () => {
-    const original = Reflect.get(globalThis, 'speechSynthesis');
+    const original: unknown = Reflect.get(globalThis, 'speechSynthesis');
     Reflect.deleteProperty(globalThis, 'speechSynthesis');
     try {
       expect(canSpeak()).toBe(true);

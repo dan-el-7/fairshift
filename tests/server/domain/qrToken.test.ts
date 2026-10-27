@@ -72,7 +72,7 @@ describe('verifyQrToken', () => {
     expect(verifyQrToken('', secret, now)).toBeNull();
     expect(verifyQrToken('site-skyline', secret, now)).toBeNull();
     expect(verifyQrToken('site-skyline.abc.0123456789abcdef', secret, now)).toBeNull();
-    expect(verifyQrToken(`site-skyline.${28414680}.abc`, secret, now)).toBeNull();
+    expect(verifyQrToken(`site-skyline.28414680.abc`, secret, now)).toBeNull();
     expect(verifyQrToken(`.28414680.0123456789abcdef`, secret, now)).toBeNull();
   });
 });

@@ -13,7 +13,7 @@ import { setSession } from '../../session';
 const INDUSTRY_ICON: Record<string, IconName> = { construction: 'hardhat', college: 'cap' };
 
 /** Personas grouped by industry, in the order the server lists them. */
-function groupByIndustry(list: Persona[]): Array<{ industry: string; siteName: string; people: Persona[] }> {
+function groupByIndustry(list: Persona[]): { industry: string; siteName: string; people: Persona[] }[] {
   const groups = new Map<string, { industry: string; siteName: string; people: Persona[] }>();
   for (const persona of list) {
     const group = groups.get(persona.industry) ?? { industry: persona.industry, siteName: persona.siteName, people: [] };

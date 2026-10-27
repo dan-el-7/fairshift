@@ -83,7 +83,7 @@ describe('pcmToWav', () => {
 });
 
 describe('stripProvenance', () => {
-  const tag = (s: string) => [...s].map((c) => c.charCodeAt(0));
+  const tag = (s: string) => Array.from(s).map((c) => c.charCodeAt(0));
 
   it('cuts the C2PA manifest Gemini appends, so it is not played as static', () => {
     const audio = [1, 2, 3, 4, 5, 6];

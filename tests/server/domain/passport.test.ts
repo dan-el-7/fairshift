@@ -62,7 +62,7 @@ describe('passport signing', () => {
 
   it('rejects a token whose signature was altered', () => {
     const [body, sig] = signPassport(payload, keys.privateKey).split('.') as [string, string];
-    const flipped = sig.slice(0, -2) + (sig.slice(-2) === 'AA' ? 'BB' : 'AA');
+    const flipped = sig.slice(0, -2) + (sig.endsWith('AA') ? 'BB' : 'AA');
     expect(verifyPassport(`${body}.${flipped}`, keys.publicKey)).toBeNull();
   });
 

@@ -24,7 +24,7 @@ export async function parseBody<S extends z.ZodType>(
     return c.json({ error: 'body must be JSON' }, 400);
   }
   const parsed = schema.safeParse(raw);
-  return parsed.success ? (parsed.data as z.output<S>) : invalid(c, parsed.error);
+  return parsed.success ? (parsed.data) : invalid(c, parsed.error);
 }
 
 /** Parses and validates the query string. Same return convention as parseBody. */
@@ -33,7 +33,7 @@ export function parseQuery<S extends z.ZodType>(
   schema: S,
 ): z.output<S> | Response {
   const parsed = schema.safeParse(c.req.query());
-  return parsed.success ? (parsed.data as z.output<S>) : invalid(c, parsed.error);
+  return parsed.success ? (parsed.data) : invalid(c, parsed.error);
 }
 
 /** JSON error body `{ error }` with the given status. */

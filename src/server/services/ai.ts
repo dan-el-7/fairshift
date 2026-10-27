@@ -1,4 +1,4 @@
-import { GoogleGenAI, type GenerateContentConfig, type GenerateContentResponse, type ThinkingLevel } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, type GenerateContentConfig, type GenerateContentResponse } from '@google/genai';
 import { z } from 'zod';
 import type { IndustryConfig, Language, Severity } from '../../shared/types';
 import { redactPII } from '../domain/anonymity';
@@ -55,11 +55,11 @@ const SEVERITIES: Severity[] = ['low', 'medium', 'high', 'critical'];
 /** Keyword fallback. Text only: it cannot transcribe audio. */
 export function heuristicAi(): ReportAI {
   return {
-    async analyse({ text, cfg }) {
+    analyse({ text, cfg }) {
       const clean = redactPII(text?.trim() ?? '');
-      if (clean.length === 0) throw new AudioUnavailableError();
+      if (clean.length === 0) return Promise.reject(new AudioUnavailableError());
       const { category, severity } = heuristicTriage(clean, cfg);
-      return { text: clean, textEn: clean, category, severity };
+      return Promise.resolve({ text: clean, textEn: clean, category, severity });
     },
   };
 }
@@ -122,7 +122,7 @@ const SYSTEM_INSTRUCTION = [
 async function generateOnce(
   client: GenAiClient,
   model: string,
-  parts: Array<Record<string, unknown>>,
+  parts: Record<string, unknown>[],
   cfg: IndustryConfig,
   deadline: number,
   withThinking: boolean,
@@ -135,7 +135,7 @@ async function generateOnce(
     responseJsonSchema: responseJsonSchema(cfg),
     temperature: 0.1,
     // Translation and triage need no long reasoning; default thinking blew the time budget.
-    ...(withThinking ? { thinkingConfig: { thinkingLevel: 'LOW' as ThinkingLevel } } : {}),
+    ...(withThinking ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } } : {}),
     // Google rejects request deadlines under 10 s; our own shorter budget is enforced by withTimeout.
     httpOptions: { timeout: Math.max(MIN_API_DEADLINE_MS, left) },
   };
@@ -151,7 +151,7 @@ async function generateOnce(
 /** Asks one model for the analysis. Throws on any failure; invalid output throws too. */
 async function askModel(client: GenAiClient, model: string, input: AiAnalyseInput, deadline: number): Promise<AiAnalysis> {
   const { cfg, language } = input;
-  const parts: Array<Record<string, unknown>> = [
+  const parts: Record<string, unknown>[] = [
     {
       text: `Report language: ${language}. Allowed categories: ${cfg.hazardCategories.join(', ')}. Report:\n<report>\n${input.text ?? '(no typed text; use the audio)'}\n</report>`,
     },

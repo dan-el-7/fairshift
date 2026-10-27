@@ -22,77 +22,96 @@ export function createMemoryRepo(): Repo {
   const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
   return {
-    async listSites() {
-      return [...sites.values()].sort(byId).map(copy);
+    listSites() {
+      return Promise.resolve([...sites.values()].sort(byId).map(copy));
     },
-    async getSite(id) {
+    getSite(id) {
       const site = sites.get(id);
-      return site ? copy(site) : null;
+      return Promise.resolve(site ? copy(site) : null);
     },
-    async saveSite(site) {
+    saveSite(site) {
       sites.set(site.id, copy(site));
+      return Promise.resolve();
     },
 
-    async listWorkers(siteId) {
-      return [...workers.values()].filter((w) => w.siteId === siteId).sort(byId).map(copy);
+    listWorkers(siteId) {
+      return Promise.resolve([...workers.values()].filter((w) => w.siteId === siteId).sort(byId).map(copy));
     },
-    async getWorker(id) {
+    getWorker(id) {
       const worker = workers.get(id);
-      return worker ? copy(worker) : null;
+      return Promise.resolve(worker ? copy(worker) : null);
     },
-    async saveWorker(worker) {
+    saveWorker(worker) {
       workers.set(worker.id, copy(worker));
+      return Promise.resolve();
     },
 
-    async listShifts(query: ShiftQuery) {
+    listShifts(query: ShiftQuery) {
       const sinceMs = query.since === undefined ? null : Date.parse(query.since);
-      return [...shifts.values()]
-        .filter((s) => query.workerId === undefined || s.workerId === query.workerId)
-        .filter((s) => query.siteId === undefined || s.siteId === query.siteId)
-        .filter((s) => sinceMs === null || Date.parse(s.checkIn) >= sinceMs)
-        .sort((a, b) => (a.checkIn < b.checkIn ? -1 : a.checkIn > b.checkIn ? 1 : 0))
-        .map(copy);
+      return Promise.resolve(
+        [...shifts.values()]
+          .filter((s) => query.workerId === undefined || s.workerId === query.workerId)
+          .filter((s) => query.siteId === undefined || s.siteId === query.siteId)
+          .filter((s) => sinceMs === null || Date.parse(s.checkIn) >= sinceMs)
+          .sort((a, b) => (a.checkIn < b.checkIn ? -1 : a.checkIn > b.checkIn ? 1 : 0))
+          .map(copy),
+      );
     },
-    async getOpenShift(workerId) {
+    getOpenShift(workerId) {
       const open = [...shifts.values()].find((s) => s.workerId === workerId && s.checkOut === null);
-      return open ? copy(open) : null;
+      return Promise.resolve(open ? copy(open) : null);
     },
-    async saveShift(shift) {
+    saveShift(shift) {
       shifts.set(shift.id, copy(shift));
+      return Promise.resolve();
+    },
+    startShift(shift) {
+      // Check and set run synchronously, so no other request can interleave between them.
+      const alreadyOpen = [...shifts.values()].some((s) => s.workerId === shift.workerId && s.checkOut === null);
+      if (alreadyOpen) return Promise.resolve(false);
+      shifts.set(shift.id, copy(shift));
+      return Promise.resolve(true);
     },
 
-    async listReports(siteId) {
-      return [...reports.values()].filter((r) => r.siteId === siteId).sort(byId).map(copy);
+    listReports(siteId) {
+      return Promise.resolve([...reports.values()].filter((r) => r.siteId === siteId).sort(byId).map(copy));
     },
-    async getReport(id) {
+    getReport(id) {
       const report = reports.get(id);
-      return report ? copy(report) : null;
+      return Promise.resolve(report ? copy(report) : null);
     },
-    async getReportByCode(caseCode) {
+    getReportByCode(caseCode) {
       const report = [...reports.values()].find((r) => r.caseCode === caseCode);
-      return report ? copy(report) : null;
+      return Promise.resolve(report ? copy(report) : null);
     },
-    async saveReport(report) {
+    saveReport(report) {
       reports.set(report.id, copy(report));
+      return Promise.resolve();
     },
 
-    async listFeedback(siteId) {
-      return feedback.filter((f) => f.siteId === siteId).map(copy);
+    listFeedback(siteId) {
+      return Promise.resolve(feedback.filter((f) => f.siteId === siteId).map(copy));
     },
-    async saveFeedback(response) {
+    saveFeedback(response) {
       feedback.push(copy(response));
+      return Promise.resolve();
     },
-    async claimDedupeKey(key) {
-      if (dedupeKeys.has(key)) return false;
+    claimDedupeKey(key) {
+      if (dedupeKeys.has(key)) return Promise.resolve(false);
       dedupeKeys.add(key);
-      return true;
+      return Promise.resolve(true);
+    },
+    releaseDedupeKey(key) {
+      dedupeKeys.delete(key);
+      return Promise.resolve();
     },
 
-    async listPassport(workerId) {
-      return [...passport.values()].filter((e) => e.workerId === workerId).sort(byId).map(copy);
+    listPassport(workerId) {
+      return Promise.resolve([...passport.values()].filter((e) => e.workerId === workerId).sort(byId).map(copy));
     },
-    async savePassport(entry) {
+    savePassport(entry) {
       passport.set(entry.id, copy(entry));
+      return Promise.resolve();
     },
   };
 }

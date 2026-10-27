@@ -32,6 +32,11 @@ export interface ServerConfig extends AppConfig {
   geminiModel: string;
   /** True when SESSION_SECRET was missing and a random per-boot secret was generated. */
   secretGenerated: boolean;
+  /**
+   * Public demo only: wipes ALL Redis data, including submitted reports, once per IST day.
+   * When false the demo is seeded once and never cleared.
+   */
+  demoDailyReset: boolean;
 }
 
 type Env = Record<string, string | undefined>;
@@ -40,6 +45,11 @@ const PASSPORT_SALT = 'fairshift';
 const PASSPORT_INFO = 'passport-ed25519';
 /** PKCS#8 DER prefix for an Ed25519 private key; the 32-byte seed follows it. */
 const ED25519_PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+
+/** Returns the value, or undefined when it is missing or empty. */
+export function nonEmpty(value: string | undefined): string | undefined {
+  return value === undefined || value === '' ? undefined : value;
+}
 
 /**
  * Derives a stable Ed25519 passport key from SESSION_SECRET, so every instance of a
@@ -55,7 +65,7 @@ export function derivePassportKeys(sessionSecret: string): PassportKeys {
     type: 'pkcs8',
   });
   const publicKey = createPublicKey(privateKey);
-  return { privateKey, publicKey, publicPem: publicKey.export({ type: 'spki', format: 'pem' }).toString() };
+  return { privateKey, publicKey, publicPem: publicKey.export({ type: 'spki', format: 'pem' }) };
 }
 
 /**
@@ -64,7 +74,27 @@ export function derivePassportKeys(sessionSecret: string): PassportKeys {
  */
 export function loadConfig(env: Env = process.env): ServerConfig {
   const port = parsePort(env.PORT);
+  const { sessionSecret, secretGenerated } = resolveSessionSecret(env);
+  const store = parseStore(env);
 
+  return {
+    port,
+    store,
+    redis: store === 'redis' ? parseRedis(env) : undefined,
+    sessionSecret,
+    secretGenerated,
+    secureCookies: env.NODE_ENV === 'production',
+    demoDailyReset: env.DEMO_DAILY_RESET?.trim() === 'true',
+    geminiApiKey: nonEmpty(env.GEMINI_API_KEY?.trim()) ?? nonEmpty(env.GOOGLE_API_KEY?.trim()),
+    googleProject: nonEmpty(env.GOOGLE_CLOUD_PROJECT?.trim()),
+    googleLocation: nonEmpty(env.GOOGLE_CLOUD_LOCATION?.trim()) ?? 'us-central1',
+    geminiModel: nonEmpty(env.GEMINI_MODEL?.trim()) ?? 'gemini-3.8-flash',
+    passport: loadPassportKeys(env.PASSPORT_PRIVATE_KEY, secretGenerated ? undefined : sessionSecret),
+  };
+}
+
+/** SESSION_SECRET when set. Otherwise a random per-boot secret, which serverless platforms refuse. */
+function resolveSessionSecret(env: Env): { sessionSecret: string; secretGenerated: boolean } {
   const providedSecret = env.SESSION_SECRET?.trim() ?? '';
   const secretGenerated = providedSecret.length === 0;
   // Serverless and multi-instance platforms run several processes, each with its own random
@@ -75,24 +105,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     );
   }
   const sessionSecret = secretGenerated ? randomBytes(32).toString('base64url') : providedSecret;
-
-  const project = env.GOOGLE_CLOUD_PROJECT?.trim() || undefined;
-  const geminiApiKey = env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim() || undefined;
-  const store = parseStore(env);
-
-  return {
-    port,
-    store,
-    redis: store === 'redis' ? parseRedis(env) : undefined,
-    sessionSecret,
-    secretGenerated,
-    secureCookies: env.NODE_ENV === 'production',
-    geminiApiKey,
-    googleProject: project,
-    googleLocation: env.GOOGLE_CLOUD_LOCATION?.trim() || 'us-central1',
-    geminiModel: env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
-    passport: loadPassportKeys(env.PASSPORT_PRIVATE_KEY, secretGenerated ? undefined : sessionSecret),
-  };
+  return { sessionSecret, secretGenerated };
 }
 
 function parsePort(raw: string | undefined): number {
@@ -116,8 +129,8 @@ function parseStore(env: Env): StoreKind {
 }
 
 function redisEndpoint(env: Env): { url: string; token: string } | undefined {
-  const url = (env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL)?.trim();
-  const token = (env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN)?.trim();
+  const url = (nonEmpty(env.KV_REST_API_URL) ?? env.UPSTASH_REDIS_REST_URL)?.trim();
+  const token = (nonEmpty(env.KV_REST_API_TOKEN) ?? env.UPSTASH_REDIS_REST_TOKEN)?.trim();
   return url && token ? { url, token } : undefined;
 }
 
@@ -136,7 +149,8 @@ function parseRedis(env: Env): { url: string; token: string } {
  * SESSION_SECRET when one is provided. With neither, generates a key pair for this boot.
  */
 function loadPassportKeys(raw: string | undefined, sessionSecret: string | undefined): PassportKeys {
-  const pem = raw?.trim().replace(/\n/g, '\n') ?? '';
+  // Env hosts store the PEM on one line with literal backslash-n sequences; turn them into newlines.
+  const pem = raw?.trim().replace(/\\n/g, '\n') ?? '';
   if (pem.length === 0) {
     if (sessionSecret !== undefined) return derivePassportKeys(sessionSecret);
     const generated = generatePassportKeys();
@@ -156,6 +170,6 @@ function loadPassportKeys(raw: string | undefined, sessionSecret: string | undef
   return {
     privateKey,
     publicKey,
-    publicPem: publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+    publicPem: publicKey.export({ type: 'spki', format: 'pem' }),
   };
 }

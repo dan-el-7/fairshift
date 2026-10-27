@@ -13,17 +13,25 @@ function isLanguage(value: unknown): value is Language {
  * Returns 'hi' or 'ta' when that script is at least 40% of the letters (and at least 3 of them),
  * 'en' when Latin letters dominate (at least 8 of them), otherwise null.
  */
+type Script = 'devanagari' | 'tamil' | 'latin';
+
+/** The script a character counts towards, or null for spaces, digits, punctuation and other scripts. */
+function scriptOf(ch: string): Script | null {
+  if (!/[\p{L}\p{M}]/u.test(ch)) return null;
+  const cp = ch.codePointAt(0) ?? 0;
+  if (cp >= 0x0900 && cp <= 0x097f) return 'devanagari';
+  if (cp >= 0x0b80 && cp <= 0x0bff) return 'tamil';
+  if (/\p{L}/u.test(ch) && /\p{Script=Latin}/u.test(ch)) return 'latin';
+  return null;
+}
+
 export function detectScript(text: string): Language | null {
-  let devanagari = 0;
-  let tamil = 0;
-  let latin = 0;
+  const counts: Record<Script, number> = { devanagari: 0, tamil: 0, latin: 0 };
   for (const ch of text) {
-    if (!/[\p{L}\p{M}]/u.test(ch)) continue;
-    const cp = ch.codePointAt(0) ?? 0;
-    if (cp >= 0x0900 && cp <= 0x097f) devanagari++;
-    else if (cp >= 0x0b80 && cp <= 0x0bff) tamil++;
-    else if (/\p{L}/u.test(ch) && /\p{Script=Latin}/u.test(ch)) latin++;
+    const script = scriptOf(ch);
+    if (script) counts[script]++;
   }
+  const { devanagari, tamil, latin } = counts;
   const total = devanagari + tamil + latin;
   if (total === 0) return null;
   if (devanagari >= 3 && devanagari / total >= 0.4) return 'hi';
@@ -34,7 +42,7 @@ export function detectScript(text: string): Language | null {
 
 function defaultBrowserLanguages(): readonly string[] {
   if (typeof navigator === 'undefined') return [];
-  const list = navigator.languages ?? [];
+  const list = (navigator.languages as readonly string[] | undefined) ?? [];
   return navigator.language ? [...list, navigator.language] : [...list];
 }
 
@@ -44,7 +52,7 @@ function defaultBrowserLanguages(): readonly string[] {
  */
 export function browserLanguage(langs: readonly string[] = defaultBrowserLanguages()): Language | null {
   for (const tag of langs) {
-    const primary = String(tag).trim().toLowerCase().split('-')[0] ?? '';
+    const primary = tag.trim().toLowerCase().split('-')[0] ?? '';
     if (isLanguage(primary)) return primary;
   }
   return null;

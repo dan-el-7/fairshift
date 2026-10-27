@@ -11,7 +11,7 @@ import Qr from './Qr';
 import Reports from './Reports';
 import Workers from './Workers';
 
-const SECTIONS: Array<{ path: string; label: TKey; icon: IconName }> = [
+const SECTIONS: { path: string; label: TKey; icon: IconName }[] = [
   { path: '/a', label: 'admin.nav.dashboard', icon: 'grid' },
   { path: '/a/reports', label: 'admin.nav.reports', icon: 'file' },
   { path: '/a/qr', label: 'admin.nav.qr', icon: 'qr' },
@@ -37,11 +37,12 @@ export default function AdminPage({ path }: { path: string }) {
   }, []);
 
   useEffect(() => {
+    const role = me?.role; // undefined while the session loads
     if (me === null) navigate('/');
-    else if (me && me.role !== 'admin') navigate('/w');
+    else if (role !== undefined && role !== 'admin') navigate('/w');
   }, [me]);
 
-  if (!me || me.role !== 'admin') return <Spinner />;
+  if (me?.role !== 'admin') return <Spinner />;
 
   const render = PAGES[path];
   return (

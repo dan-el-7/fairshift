@@ -49,10 +49,6 @@ export function attendanceRoutes(deps: Deps): Hono<AppEnv> {
       method = 'geo';
     }
 
-    if ((await repo.getOpenShift(worker.id)) !== null) {
-      return c.json({ error: 'already checked in' }, 409);
-    }
-
     const shift = {
       id: randomUUID(),
       workerId: worker.id,
@@ -61,7 +57,8 @@ export function attendanceRoutes(deps: Deps): Hono<AppEnv> {
       checkOut: null,
       method,
     };
-    await repo.saveShift(shift);
+    // Atomic in the store: two concurrent check-ins cannot both open a shift.
+    if (!(await repo.startShift(shift))) return c.json({ error: 'already checked in' }, 409);
     return c.json(shift);
   });
 

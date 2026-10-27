@@ -8,7 +8,9 @@ import './qol.css';
 // Before the first render, so a saved theme never flashes the other one.
 applyTheme(savedTheme());
 applySavedTextSize();
-render(<App />, document.getElementById('app') as HTMLElement);
+const mount = document.getElementById('app');
+if (!mount) throw new Error('Missing #app mount point');
+render(<App />, mount);
 
 // Offline support only in production builds: the dev server must never serve stale cached assets.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

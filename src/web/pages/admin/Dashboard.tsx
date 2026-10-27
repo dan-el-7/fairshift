@@ -203,12 +203,16 @@ export default function Dashboard() {
           <section class="card stack" aria-labelledby="severity-title">
             <h2 id="severity-title">{t('admin.severity.title')}</h2>
             <ul class="inline-list">
-              {SEVERITIES.map((severity) => (
-                <li key={severity}>
-                  <SeverityBadge severity={severity} />
-                  <span>{data.reportsBySeverity[severity] ?? 0}</span>
-                </li>
-              ))}
+              {SEVERITIES.map((severity) => {
+                // Typed as always present; a count the server omitted still shows as 0.
+                const count = data.reportsBySeverity[severity] as number | undefined;
+                return (
+                  <li key={severity}>
+                    <SeverityBadge severity={severity} />
+                    <span>{count ?? 0}</span>
+                  </li>
+                );
+              })}
             </ul>
           </section>
 

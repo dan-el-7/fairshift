@@ -94,12 +94,12 @@ function ReportItem({ report, onUpdated }: ReportItemProps) {
         )}
       </details>
 
-      <form class="stack report-form" onSubmit={submit}>
+      <form class="stack report-form" onSubmit={(event) => void submit(event)}>
         <div class="field">
           <label class="field-label" for={statusId}>
             {t('admin.reports.newStatus')}
           </label>
-          <select id={statusId} value={status} onChange={(event) => setStatus((event.currentTarget as HTMLSelectElement).value as ReportStatus)}>
+          <select id={statusId} value={status} onChange={(event) => setStatus((event.currentTarget).value as ReportStatus)}>
             {REPORT_STATUSES.map((value) => (
               <option key={value} value={value}>
                 {t(`status.${value}` as TKey)}
@@ -116,7 +116,7 @@ function ReportItem({ report, onUpdated }: ReportItemProps) {
             rows={2}
             maxLength={500}
             value={note}
-            onInput={(event) => setNote((event.currentTarget as HTMLTextAreaElement).value)}
+            onInput={(event) => setNote((event.currentTarget).value)}
           />
         </div>
         <button type="submit" class="btn btn-primary" disabled={saving}>

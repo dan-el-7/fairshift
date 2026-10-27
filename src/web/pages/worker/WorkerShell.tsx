@@ -9,7 +9,7 @@ import { ensureSession, useSession } from '../../session';
 
 /** The five worker sections, with the existing labels and icons. */
 /** `short` is a one-word label that fits a phone-width tab in every language; `label` is the full name. */
-const NAV: Array<{ path: string; icon: IconName; label: TKey; short: TKey }> = [
+const NAV: { path: string; icon: IconName; label: TKey; short: TKey }[] = [
   { path: '/w', icon: 'home', label: 'nav.home', short: 'nav.short.home' },
   { path: '/w/attendance', icon: 'checkin', label: 'attendance.title', short: 'nav.short.attendance' },
   { path: '/w/pay', icon: 'pay', label: 'pay.title', short: 'nav.short.pay' },
@@ -57,11 +57,12 @@ export function WorkerShell({ render }: { render: (me: Me) => VNode }) {
   }, []);
 
   useEffect(() => {
+    const role = me?.role; // undefined while the session loads
     if (me === null) navigate('/');
-    else if (me && me.role !== 'worker') navigate('/a');
+    else if (role !== undefined && role !== 'worker') navigate('/a');
   }, [me]);
 
-  if (!me || me.role !== 'worker') return <Spinner />;
+  if (me?.role !== 'worker') return <Spinner />;
   return (
     <>
       <WorkerNav />

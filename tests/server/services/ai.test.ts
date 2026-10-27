@@ -11,6 +11,7 @@ import {
 
 const ctorSpy = vi.hoisted(() => vi.fn());
 vi.mock('@google/genai', () => ({
+  ThinkingLevel: { LOW: 'LOW' },
   GoogleGenAI: class {
     models = { generateContent: async () => ({ text: '{}' }) };
     constructor(options: unknown) {

@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { derivePassportKeys, loadConfig } from '../../src/server/config';
 import { generatePassportKeys, signPassport, verifyPassport } from '../../src/server/domain/passport';
@@ -94,5 +95,30 @@ describe('store selection', () => {
     expect(loadConfig({ GEMINI_API_KEY: 'key-one' }).geminiApiKey).toBe('key-one');
     expect(loadConfig({ GOOGLE_API_KEY: 'key-two' }).geminiApiKey).toBe('key-two');
     expect(loadConfig({}).geminiApiKey).toBeUndefined();
+  });
+});
+
+describe('PASSPORT_PRIVATE_KEY line breaks', () => {
+  const { privateKey } = generateKeyPairSync('ed25519');
+  const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+
+  it('loads a PEM with real newlines', () => {
+    const config = loadConfig({ PASSPORT_PRIVATE_KEY: pem, SESSION_SECRET: SECRET });
+    expect(config.passport.publicPem).toContain('BEGIN PUBLIC KEY');
+  });
+
+  it('loads the same PEM when the newlines are literal backslash-n sequences', () => {
+    const oneLine = pem.replace(/\n/g, '\n');
+    const fromEscaped = loadConfig({ PASSPORT_PRIVATE_KEY: oneLine, SESSION_SECRET: SECRET });
+    const fromReal = loadConfig({ PASSPORT_PRIVATE_KEY: pem, SESSION_SECRET: SECRET });
+    expect(fromEscaped.passport.publicPem).toBe(fromReal.passport.publicPem);
+  });
+});
+
+describe('demo daily reset flag', () => {
+  it('is off by default and on only for the exact value "true"', () => {
+    expect(loadConfig({}).demoDailyReset).toBe(false);
+    expect(loadConfig({ DEMO_DAILY_RESET: 'false' }).demoDailyReset).toBe(false);
+    expect(loadConfig({ DEMO_DAILY_RESET: 'true' }).demoDailyReset).toBe(true);
   });
 });

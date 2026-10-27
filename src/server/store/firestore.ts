@@ -11,6 +11,15 @@ import type { Repo, ShiftQuery } from './repo';
 
 const ALREADY_EXISTS = 6;
 
+/** Document in the openShifts collection, keyed by worker id: its presence means the worker is checked in. */
+interface OpenLock {
+  shiftId: string;
+}
+
+function isAlreadyExists(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && 'code' in err && err.code === ALREADY_EXISTS;
+}
+
 /** Firestore rejects undefined fields; a JSON round trip drops them and gives a plain object. */
 function plain<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
@@ -35,8 +44,15 @@ export function createFirestoreRepo(db: Firestore = new Firestore()): Repo {
     return snap.data() ?? null;
   }
 
-  async function put<T extends object>(name: string, id: string, value: T): Promise<void> {
-    await col<T>(name).doc(id).set(plain(value));
+  async function put(name: string, id: string, value: object): Promise<void> {
+    await col<object>(name).doc(id).set(plain(value));
+  }
+
+  async function openShiftOf(workerId: string): Promise<Shift | null> {
+    const open = await all(
+      col<Shift>('shifts').where('workerId', '==', workerId).where('checkOut', '==', null).limit(1),
+    );
+    return open[0] ?? null;
   }
 
   return {
@@ -70,13 +86,26 @@ export function createFirestoreRepo(db: Firestore = new Firestore()): Repo {
         .filter((s) => sinceMs === null || Date.parse(s.checkIn) >= sinceMs)
         .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
     },
-    async getOpenShift(workerId) {
-      const open = await all(
-        col<Shift>('shifts').where('workerId', '==', workerId).where('checkOut', '==', null).limit(1),
-      );
-      return open[0] ?? null;
+    getOpenShift: openShiftOf,
+    async saveShift(shift) {
+      await put('shifts', shift.id, shift);
+      // The open-shift lock follows the open shift: set while open, deleted when closed (see startShift).
+      const lock = col<OpenLock>('openShifts').doc(shift.workerId);
+      if (shift.checkOut === null) await lock.set({ shiftId: shift.id });
+      else await lock.delete();
     },
-    saveShift: (shift) => put('shifts', shift.id, shift),
+    async startShift(shift) {
+      if ((await openShiftOf(shift.workerId)) !== null) return false;
+      try {
+        // create() fails when the lock exists, so of two concurrent check-ins only one gets it.
+        await col<OpenLock>('openShifts').doc(shift.workerId).create({ shiftId: shift.id });
+      } catch (err) {
+        if (isAlreadyExists(err)) return false;
+        throw err;
+      }
+      await put('shifts', shift.id, shift);
+      return true;
+    },
 
     async listReports(siteId) {
       const reports = await all(col<Report>('reports').where('siteId', '==', siteId));
@@ -98,9 +127,12 @@ export function createFirestoreRepo(db: Firestore = new Firestore()): Repo {
           .create({ claimedAt: new Date().toISOString() });
         return true;
       } catch (err) {
-        if (typeof err === 'object' && err !== null && 'code' in err && err.code === ALREADY_EXISTS) return false;
+        if (isAlreadyExists(err)) return false;
         throw err;
       }
+    },
+    async releaseDedupeKey(key) {
+      await col<{ claimedAt: string }>('feedbackKeys').doc(key).delete();
     },
 
     async listPassport(workerId) {

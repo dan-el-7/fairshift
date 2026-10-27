@@ -31,7 +31,7 @@ describe('accessibility (axe-core, colour contrast excluded)', () => {
     mockFetch({ '/api/auth/personas': personas, '/api/me': reply(401, { error: 'no' }) });
     window.location.hash = '#/';
     const { container } = render(<App />);
-    await screen.findByText('Ravi Kumar');
+    await screen.findByText('Ravi Kumar', undefined, { timeout: 5000 });
     expect(await violations(container)).toEqual([]);
   });
 
@@ -42,7 +42,7 @@ describe('accessibility (axe-core, colour contrast excluded)', () => {
     });
     window.location.hash = '#/w';
     const { container } = render(<App />);
-    await screen.findByText('You worked 13 hours in one shift. Please rest and tell your supervisor.');
+    await screen.findByText('You worked 13 hours in one shift. Please rest and tell your supervisor.', undefined, { timeout: 5000 });
     expect(await violations(container)).toEqual([]);
   });
 

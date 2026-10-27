@@ -49,7 +49,7 @@ export default function Verify() {
             autocomplete="off"
             spellcheck={false}
             value={paste}
-            onInput={(event) => setPaste((event.currentTarget as HTMLInputElement).value)}
+            onInput={(event) => setPaste((event.currentTarget).value)}
           />
         </div>
         <div class="row">
@@ -67,7 +67,7 @@ export default function Verify() {
 
       {check.data && check.data.valid && check.data.payload ? (
         <section class="card stack" aria-labelledby="verify-result">
-          <Banner tone="success" title={t('verify.valid')}>
+          <Banner tone="success" title={t('verify.valid')} titleId="verify-result">
             {t('verify.worker', { name: check.data.payload.workerName })}
             <br />
             {t('verify.issuedAt', { date: formatDay(check.data.payload.issuedAt.slice(0, 10)) })}

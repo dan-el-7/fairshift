@@ -3,7 +3,7 @@ import type { FeedbackAggregate, FeedbackRatings, FeedbackResponse } from '../..
 import { istDay } from './time';
 
 const CASE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const RATING_KEYS: Array<keyof FeedbackRatings> = ['safety', 'fairness', 'respect', 'workload'];
+const RATING_KEYS: (keyof FeedbackRatings)[] = ['safety', 'fairness', 'respect', 'workload'];
 
 /** Random anonymous report code formatted XXXX-XXXX (8 characters from a 31-symbol alphabet). */
 export function caseCode(): string {

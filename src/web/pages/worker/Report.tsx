@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { LanguageNudge } from '../../components/LanguageNudge';
 import type { CreateReportRequest, CreateReportResponse, Me } from '../../../shared/api';
 import { INDUSTRIES } from '../../../shared/industries';
@@ -9,7 +9,7 @@ import { SpeakButton } from '../../components/SpeakButton';
 import { copyText } from '../../clipboard';
 import { t, type TKey, useLang } from '../../i18n';
 import { navigate } from '../../router';
-import { canRecord, recordAudio, type Recording } from '../../speech';
+import { canRecord, type Clip, recordAudio, type Recording } from '../../speech';
 
 /** A picture for each hazard category. Unknown categories get the generic alert icon. */
 const CATEGORY_ICON: Partial<Record<string, IconName>> = {
@@ -28,7 +28,7 @@ const CATEGORY_ICON: Partial<Record<string, IconName>> = {
 
 /** Three visible steps: 1 category, 2 describe, 3 done. Presentation only. */
 function Steps({ current }: { current: 1 | 2 | 3 }) {
-  const items: Array<{ key: TKey }> = [{ key: 'report.whatWrong' }, { key: 'report.describe' }, { key: 'report.caseCode' }];
+  const items: { key: TKey }[] = [{ key: 'report.whatWrong' }, { key: 'report.describe' }, { key: 'report.caseCode' }];
   return (
     <ol class="steps" aria-label={t('report.title')}>
       {items.map((item, index) => {
@@ -51,43 +51,186 @@ function Steps({ current }: { current: 1 | 2 | 3 }) {
   );
 }
 
+/**
+ * Voice note capture. The recorder reports its end (stop, time limit or error) through onFinished, so the
+ * recording state and the clip stay correct without polling. Leaving the page releases the microphone.
+ */
+function useVoiceNote(setError: (message: string | null) => void) {
+  const [recording, setRecording] = useState(false);
+  const [audio, setAudio] = useState<Clip | null>(null);
+  const handle = useRef<Recording | null>(null);
+  const request = useRef<AbortController | null>(null);
+
+  function finished(clip: Clip | null) {
+    handle.current = null;
+    request.current = null;
+    setRecording(false);
+    if (clip) setAudio(clip);
+    else setError(t('report.voiceUnsupported'));
+  }
+
+  async function startVoice() {
+    if (handle.current) return;
+    setError(null);
+    const controller = new AbortController();
+    request.current = controller;
+    try {
+      const rec = await recordAudio({ signal: controller.signal, onFinished: finished });
+      // The page may have left while the permission prompt was open; the mic must not stay on.
+      if (controller.signal.aborted) {
+        rec.cancel();
+        return;
+      }
+      handle.current = rec;
+      setRecording(true);
+    } catch {
+      if (controller.signal.aborted) return;
+      request.current = null;
+      setError(t('report.voiceUnsupported'));
+    }
+  }
+
+  function stopVoice() {
+    handle.current?.stop();
+  }
+
+  useEffect(() => {
+    return () => {
+      request.current?.abort();
+      handle.current?.cancel();
+      handle.current = null;
+      request.current = null;
+    };
+  }, []);
+
+  return { recording, audio, clearAudio: () => setAudio(null), startVoice, stopVoice };
+}
+
+function CategoryPicker({
+  categories,
+  category,
+  onChange,
+}: {
+  categories: readonly string[];
+  category: string | null;
+  onChange: (code: string | null) => void;
+}) {
+  return (
+    <fieldset class="stack">
+      <legend>{t('report.whatWrong')}</legend>
+      <div class="choice-grid">
+        {categories.map((code) => (
+          <button key={code} type="button" class="choice" aria-pressed={category === code} onClick={() => onChange(code)}>
+            <Icon name={CATEGORY_ICON[code] ?? 'alert'} size={24} />
+            <span>{t(`hazard.${code}` as TKey)}</span>
+          </button>
+        ))}
+        <button type="button" class="choice" aria-pressed={category === null} onClick={() => onChange(null)}>
+          <Icon name="help" size={24} />
+          <span>{t('report.notSure')}</span>
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+function VoicePanel({
+  recording,
+  hasClip,
+  onStart,
+  onStop,
+}: {
+  recording: boolean;
+  hasClip: boolean;
+  onStart: () => void;
+  onStop: () => void;
+}) {
+  return (
+    <div class="voice">
+      <button
+        type="button"
+        class={`mic-btn${recording ? ' is-recording' : ''}`}
+        aria-label={recording ? t('report.voiceStop') : t('report.voiceStart')}
+        onClick={() => (recording ? onStop() : onStart())}
+      >
+        <Icon name={recording ? 'stop' : 'mic'} size={40} />
+      </button>
+      <div class="row">
+        <span class="muted">{recording ? t('report.voiceStop') : t('report.voiceStart')}</span>
+        <SpeakButton text={recording ? t('report.voiceStop') : t('report.voiceStart')} />
+      </div>
+      {recording ? <p class="muted">{t('report.voiceLimit')}</p> : null}
+      {hasClip && !recording ? <p role="status">{t('report.voiceRecorded')}</p> : null}
+    </div>
+  );
+}
+
+/** Confirmation after a report is sent: the case code, a copy button, and the way to track it. */
+function ReportSent({ result, onAnother }: { result: CreateReportResponse; onAnother: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // The form is replaced by this screen, so move focus here for screen reader users.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  async function copyCode() {
+    setCopied(await copyText(result.caseCode));
+  }
+
+  return (
+    <section class="card stack" aria-labelledby="sent-title">
+      <h1 id="sent-title" ref={headingRef} tabIndex={-1}>
+        {t('report.received')}
+      </h1>
+      <Steps current={3} />
+      <div class="ticket">
+        <p>{t('report.caseCode')}</p>
+        <p class="case-code" aria-label={result.caseCode}>
+          {result.caseCode}
+        </p>
+        <div class="row">
+          <button type="button" class="btn btn-primary" onClick={() => void copyCode()}>
+            <Icon name="copy" size={20} />
+            {t('report.copyCode')}
+          </button>
+          {copied ? <span role="status">{t('common.copied')}</span> : null}
+        </div>
+      </div>
+      <Banner tone="warn">
+        <p>{t('report.saveCode')}</p>
+      </Banner>
+      <div class="row">
+        <SpeakButton text={`${t('report.received')} ${t('report.saveCode')}`} />
+      </div>
+      <div class="row">
+        <button type="button" class="btn" onClick={() => navigate(`/track?code=${encodeURIComponent(result.caseCode)}`)}>
+          <Icon name="track" size={20} />
+          {t('report.track')}
+        </button>
+        <button type="button" class="btn" onClick={onAnother}>
+          {t('report.another')}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export default function Report({ me }: { me: Me }) {
   const lang = useLang();
   const categories = INDUSTRIES[me.site.industry].hazardCategories;
   const [category, setCategory] = useState<string | null>(null);
   const [text, setText] = useState('');
-  const [recording, setRecording] = useState<Recording | null>(null);
-  const [audio, setAudio] = useState<{ base64: string; mime: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CreateReportResponse | null>(null);
-  const [copied, setCopied] = useState(false);
+  const note = useVoiceNote(setError);
   const voice = canRecord();
-
-  async function startVoice() {
-    setError(null);
-    try {
-      setRecording(await recordAudio(60000));
-    } catch {
-      setError(t('report.voiceUnsupported'));
-    }
-  }
-
-  async function stopVoice() {
-    if (!recording) return;
-    try {
-      setAudio(await recording.stop());
-    } catch {
-      setError(t('report.voiceUnsupported'));
-    } finally {
-      setRecording(null);
-    }
-  }
 
   async function submit(event: Event) {
     event.preventDefault();
     const body = text.trim();
-    if (!body && !audio) {
+    if (!body && !note.audio) {
       setError(t('report.needInput'));
       return;
     }
@@ -100,14 +243,14 @@ export default function Report({ me }: { me: Me }) {
       language: lang,
       category: category ?? undefined,
       text: body || undefined,
-      audioBase64: audio?.base64,
-      audioMime: audio?.mime,
+      audioBase64: note.audio?.base64,
+      audioMime: note.audio?.mime,
     };
     try {
       const res = await api.post<CreateReportResponse>('/api/reports', payload);
       setResult(res);
       setText('');
-      setAudio(null);
+      note.clearAudio();
     } catch {
       setError(t('report.failed'));
     } finally {
@@ -117,53 +260,20 @@ export default function Report({ me }: { me: Me }) {
 
   if (result) {
     return (
-      <section class="card stack" aria-labelledby="sent-title">
-        <h1 id="sent-title">{t('report.received')}</h1>
-        <Steps current={3} />
-        <div class="ticket">
-          <p>{t('report.caseCode')}</p>
-          <p class="case-code" aria-label={result.caseCode}>
-            {result.caseCode}
-          </p>
-          <div class="row">
-            <button type="button" class="btn btn-primary" onClick={async () => setCopied(await copyText(result.caseCode))}>
-              <Icon name="copy" size={20} />
-              {t('report.copyCode')}
-            </button>
-            {copied ? <span role="status">{t('common.copied')}</span> : null}
-          </div>
-        </div>
-        <Banner tone="warn">
-          <p>{t('report.saveCode')}</p>
-        </Banner>
-        <div class="row">
-          <SpeakButton text={`${t('report.received')} ${t('report.saveCode')}`} />
-        </div>
-        <div class="row">
-          <button type="button" class="btn" onClick={() => navigate(`/track?code=${encodeURIComponent(result.caseCode)}`)}>
-            <Icon name="track" size={20} />
-            {t('report.track')}
-          </button>
-          <button
-            type="button"
-            class="btn"
-            onClick={() => {
-              setResult(null);
-              setCategory(null);
-              setCopied(false);
-            }}
-          >
-            {t('report.another')}
-          </button>
-        </div>
-      </section>
+      <ReportSent
+        result={result}
+        onAnother={() => {
+          setResult(null);
+          setCategory(null);
+        }}
+      />
     );
   }
 
-  const step: 1 | 2 = category === null && !text.trim() && !audio ? 1 : 2;
+  const step: 1 | 2 = category === null && !text.trim() && !note.audio ? 1 : 2;
 
   return (
-    <form class="stack" onSubmit={submit} aria-labelledby="report-title">
+    <form class="stack" onSubmit={(event) => void submit(event)} aria-labelledby="report-title">
       <h1 id="report-title">{t('report.title')}</h1>
       <Steps current={step} />
 
@@ -175,27 +285,7 @@ export default function Report({ me }: { me: Me }) {
         <SpeakButton text={t('report.anonymous')} />
       </div>
 
-      <fieldset class="stack">
-        <legend>{t('report.whatWrong')}</legend>
-        <div class="choice-grid">
-          {categories.map((code) => (
-            <button
-              key={code}
-              type="button"
-              class="choice"
-              aria-pressed={category === code}
-              onClick={() => setCategory(code)}
-            >
-              <Icon name={CATEGORY_ICON[code] ?? 'alert'} size={24} />
-              <span>{t(`hazard.${code}` as TKey)}</span>
-            </button>
-          ))}
-          <button type="button" class="choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
-            <Icon name="help" size={24} />
-            <span>{t('report.notSure')}</span>
-          </button>
-        </div>
-      </fieldset>
+      <CategoryPicker categories={categories} category={category} onChange={setCategory} />
 
       <div class="field">
         <label class="field-label" for="report-text">
@@ -206,33 +296,23 @@ export default function Report({ me }: { me: Me }) {
           rows={5}
           placeholder={t('report.placeholder')}
           value={text}
-          onInput={(event) => setText((event.currentTarget as HTMLTextAreaElement).value)}
+          onInput={(event) => setText((event.currentTarget).value)}
         />
         <LanguageNudge text={text} />
       </div>
 
       {voice ? (
-        <div class="voice">
-          <button
-            type="button"
-            class={`mic-btn${recording ? ' is-recording' : ''}`}
-            aria-label={recording ? t('report.voiceStop') : t('report.voiceStart')}
-            onClick={() => (recording ? void stopVoice() : void startVoice())}
-          >
-            <Icon name={recording ? 'stop' : 'mic'} size={40} />
-          </button>
-          <div class="row">
-            <span class="muted">{recording ? t('report.voiceStop') : t('report.voiceStart')}</span>
-            <SpeakButton text={recording ? t('report.voiceStop') : t('report.voiceStart')} />
-          </div>
-          {recording ? <p class="muted">{t('report.voiceLimit')}</p> : null}
-          {audio && !recording ? <p role="status">{t('report.voiceRecorded')}</p> : null}
-        </div>
+        <VoicePanel
+          recording={note.recording}
+          hasClip={note.audio !== null}
+          onStart={() => void note.startVoice()}
+          onStop={note.stopVoice}
+        />
       ) : null}
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
 
-      <button type="submit" class="btn btn-primary btn-block" disabled={busy || recording !== null}>
+      <button type="submit" class="btn btn-primary btn-block" disabled={busy || note.recording}>
         <Icon name="send" size={20} />
         {busy ? t('common.submitting') : t('report.submit')}
       </button>
@@ -242,7 +322,7 @@ export default function Report({ me }: { me: Me }) {
 }
 
 /** Seconds after which each progress message appears. Sorting by AI can take up to ~20 s. */
-const PROGRESS_STEPS: Array<{ after: number; key: TKey }> = [
+const PROGRESS_STEPS: { after: number; key: TKey }[] = [
   { after: 0, key: 'report.progress.sending' },
   { after: 3, key: 'report.progress.sorting' },
   { after: 10, key: 'report.progress.almost' },
@@ -256,11 +336,11 @@ function SendingProgress() {
     const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
     return () => window.clearInterval(timer);
   }, []);
-  const step = [...PROGRESS_STEPS].reverse().find((s) => elapsed >= s.after) ?? PROGRESS_STEPS[0]!;
+  const key = [...PROGRESS_STEPS].reverse().find((s) => elapsed >= s.after)?.key ?? 'report.progress.sending';
   return (
     <div class="send-progress" role="status" aria-live="polite">
       <span class="send-progress-spinner" aria-hidden="true" />
-      <span>{t(step.key)}</span>
+      <span>{t(key)}</span>
     </div>
   );
 }

@@ -39,6 +39,9 @@ export function createFakeFirestore(): Firestore {
         if (coll(name).has(id)) throw Object.assign(new Error('already exists'), { code: 6 });
         coll(name).set(id, structuredClone(value));
       },
+      delete: async () => {
+        coll(name).delete(id);
+      },
     }),
   });
 

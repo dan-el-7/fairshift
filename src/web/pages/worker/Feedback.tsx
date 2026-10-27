@@ -67,7 +67,7 @@ export default function Feedback(_props: { me: Me }) {
   }
 
   return (
-    <form class="stack" onSubmit={submit}>
+    <form class="stack" onSubmit={(event) => void submit(event)}>
       <h1>{t('feedback.title')}</h1>
       <Banner tone="info">
         <p>{t('feedback.anonymous')}</p>
@@ -114,7 +114,7 @@ export default function Feedback(_props: { me: Me }) {
           id="feedback-comment"
           rows={3}
           value={comment}
-          onInput={(event) => setComment((event.currentTarget as HTMLTextAreaElement).value)}
+          onInput={(event) => setComment((event.currentTarget).value)}
         />
         <LanguageNudge text={comment} />
       </div>

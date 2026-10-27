@@ -3,34 +3,38 @@ import { t, useLang } from '../i18n';
 import { savedTheme, setTheme, type ThemeChoice } from '../theme';
 import { Icon, type IconName } from './Icon';
 
-const OPTIONS: Array<{ value: ThemeChoice; icon: IconName; label: 'theme.auto' | 'theme.light' | 'theme.dark' }> = [
+const OPTIONS: { value: ThemeChoice; icon: IconName; label: 'theme.auto' | 'theme.light' | 'theme.dark' }[] = [
   { value: 'auto', icon: 'contrast', label: 'theme.auto' },
   { value: 'light', icon: 'sun', label: 'theme.light' },
   { value: 'dark', icon: 'moon', label: 'theme.dark' },
 ];
 
-/** Three-way Auto / Light / Dark switch, shown as a compact segmented pill. */
+/**
+ * Three-way Auto / Light / Dark switch, shown as a compact segmented pill.
+ * Native radio inputs give arrow-key movement and one tab stop; the input is hidden visually, not removed.
+ */
 export function ThemeSwitch() {
   useLang();
   const [choice, setChoice] = useState<ThemeChoice>(savedTheme);
   return (
-    <div class="theme-switch" role="radiogroup" aria-label={t('theme.label')}>
+    <fieldset class="theme-switch">
+      <legend class="visually-hidden">{t('theme.label')}</legend>
       {OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={choice === option.value}
-          title={t(option.label)}
-          onClick={() => {
-            setTheme(option.value);
-            setChoice(option.value);
-          }}
-        >
+        <label key={option.value} title={t(option.label)}>
+          <input
+            type="radio"
+            name="theme"
+            value={option.value}
+            checked={choice === option.value}
+            onChange={() => {
+              setTheme(option.value);
+              setChoice(option.value);
+            }}
+          />
           <Icon name={option.icon} size={16} />
           <span>{t(option.label)}</span>
-        </button>
+        </label>
       ))}
-    </div>
+    </fieldset>
   );
 }

@@ -20,7 +20,7 @@ describe('report sending progress', () => {
     render(<Report me={worker} />);
 
     fireEvent.input(screen.getByLabelText('Describe the problem'), { target: { value: 'Loose wiring near the lift' } });
-    fireEvent.submit(screen.getByRole('button', { name: /send report/i }).closest('form') as HTMLFormElement);
+    fireEvent.submit(screen.getByRole('button', { name: /send report/i }).closest('form')!);
 
     const progress = () => document.querySelector('.send-progress');
     expect(progress()?.getAttribute('role')).toBe('status');

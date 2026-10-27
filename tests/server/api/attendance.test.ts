@@ -37,6 +37,19 @@ describe('check-in', () => {
     expect(shift.method).toBe('qr');
   });
 
+  it('lets only one of two simultaneous check-ins open a shift', async () => {
+    const t = await makeTestApp();
+    const cookie = await login(t, WORKER_SKYLINE);
+    const body = { qrToken: tokenFor('site-skyline', NOW) };
+    const results = await Promise.all([
+      send(t, 'POST', '/api/attendance/check-in', { cookie, body }),
+      send(t, 'POST', '/api/attendance/check-in', { cookie, body }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    const open = (await t.repo.listShifts({ workerId: WORKER_SKYLINE })).filter((s) => s.checkOut === null);
+    expect(open).toHaveLength(1);
+  });
+
   it('rejects a QR token issued for another site', async () => {
     const t = await makeTestApp();
     const cookie = await login(t, WORKER_SKYLINE);

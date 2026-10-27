@@ -12,6 +12,11 @@ export type Params = Record<string, string | number>;
 
 const DICTS: Record<Language, Record<TKey, string>> = { en, hi, ta };
 
+/** Reads one key from a dictionary. Typed as possibly missing, so a key absent from a translation falls back. */
+function lookup(dict: Partial<Record<TKey, string>>, key: TKey): string | undefined {
+  return dict[key];
+}
+
 export const LANGUAGES: Language[] = ['en', 'hi', 'ta'];
 /** Native-script labels, shown in the language picker in every UI language. */
 export const LANGUAGE_LABEL: Record<Language, string> = { en: 'English', hi: 'हिन्दी', ta: 'தமிழ்' };
@@ -79,7 +84,7 @@ export function useLang(): Language {
 
 /** Translate a key in a given language, whatever the UI language is. Used for text that stays in its own language. */
 export function tIn(lang: Language, key: TKey, params?: Params): string {
-  const template: string = DICTS[lang][key] ?? DICTS.en[key] ?? key;
+  const template: string = lookup(DICTS[lang], key) ?? lookup(DICTS.en, key) ?? key;
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in params ? String(params[name]) : match,
@@ -88,7 +93,7 @@ export function tIn(lang: Language, key: TKey, params?: Params): string {
 
 /** Translate a key in the current language, falling back to English, then to the key. */
 export function t(key: TKey, params?: Params): string {
-  const template: string = DICTS[current][key] ?? DICTS.en[key] ?? key;
+  const template: string = lookup(DICTS[current], key) ?? lookup(DICTS.en, key) ?? key;
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in params ? String(params[name]) : match,

@@ -214,8 +214,8 @@ describe('computePayslip: monthly (college)', () => {
     const slip = computePayslip(worker, days(1, 20, 8, 8), jan2024, college);
     const base = line(slip, 'pay.base');
     expect(base.amount).toBe(1384615);
-    expect(base.params['absentDays']).toBe(6);
-    expect(base.params['dayRate']).toBeCloseTo(69230.769, 2);
+    expect(base.params.absentDays).toBe(6);
+    expect(base.params.dayRate).toBeCloseTo(69230.769, 2);
     expect(line(slip, 'pay.pf').amount).toBe(166154);
     expect(line(slip, 'pay.esi').amount).toBe(10385);
     expect(slip.net).toBe(1208076);

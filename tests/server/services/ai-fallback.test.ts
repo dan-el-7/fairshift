@@ -3,6 +3,7 @@ import { INDUSTRIES } from '../../../src/shared/industries';
 import { createReportAi, geminiAi, heuristicAi, type AiAnalyseInput, type GenAiClient } from '../../../src/server/services/ai';
 
 vi.mock('@google/genai', () => ({
+  ThinkingLevel: { LOW: 'LOW' },
   GoogleGenAI: class {
     models = { generateContent: async () => ({ text: '{}' }) };
   },

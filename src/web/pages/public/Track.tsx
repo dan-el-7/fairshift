@@ -67,7 +67,7 @@ export default function Track() {
             autocomplete="off"
             autocapitalize="characters"
             spellcheck={false}
-            onInput={(event) => setCode((event.currentTarget as HTMLInputElement).value)}
+            onInput={(event) => setCode((event.currentTarget).value)}
           />
           <p class="muted">{t('track.helpText')}</p>
         </div>

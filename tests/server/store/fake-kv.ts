@@ -3,7 +3,7 @@ import type { KvClient } from '../../../src/server/store/redis';
 /** In-memory stand-in for the Upstash client, with the same string-in, string-out contract. */
 export interface FakeKv extends KvClient {
   /** Every key and value written so far, for raw-storage assertions. */
-  dump(): Array<[string, string]>;
+  dump(): [string, string][];
 }
 
 export function createFakeKv(): FakeKv {
@@ -43,9 +43,16 @@ export function createFakeKv(): FakeKv {
     async smembers(key) {
       return [...(sets.get(key) ?? [])];
     },
+    async srem(key, member) {
+      return sets.get(key)?.delete(member) ? 1 : 0;
+    },
+    async del(key) {
+      const existed = strings.delete(key);
+      return existed ? 1 : 0;
+    },
     async deletePrefix(prefix) {
       let deleted = 0;
-      for (const store of [strings, hashes, sets] as Array<Map<string, unknown>>) {
+      for (const store of [strings, hashes, sets] as Map<string, unknown>[]) {
         for (const key of [...store.keys()]) {
           if (key.startsWith(prefix)) {
             store.delete(key);
@@ -56,7 +63,7 @@ export function createFakeKv(): FakeKv {
       return deleted;
     },
     dump() {
-      const out: Array<[string, string]> = [...strings];
+      const out: [string, string][] = [...strings];
       for (const [key, hash] of hashes) for (const value of hash.values()) out.push([key, value]);
       for (const [key, set] of sets) for (const member of set) out.push([key, member]);
       return out;

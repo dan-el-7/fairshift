@@ -15,7 +15,7 @@ describe('theme switch', () => {
   it('follows the device by default', () => {
     expect(savedTheme()).toBe('auto');
     render(<ThemeSwitch />);
-    expect(screen.getByRole('radio', { name: 'Auto' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Auto' })).toHaveProperty('checked', true);
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
   });
 
@@ -24,11 +24,26 @@ describe('theme switch', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Dark' }));
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     expect(savedTheme()).toBe('dark');
-    expect(screen.getByRole('radio', { name: 'Dark' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Dark' })).toHaveProperty('checked', true);
 
     fireEvent.click(screen.getByRole('radio', { name: 'Auto' }));
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     expect(savedTheme()).toBe('auto');
+  });
+
+  it('offers the three choices as one native radio group', () => {
+    render(<ThemeSwitch />);
+    const radios = screen.getAllByRole('radio');
+    expect(radios).toHaveLength(3);
+    expect(new Set(radios.map((radio) => radio.getAttribute('name'))).size).toBe(1);
+    expect(screen.getByRole('group', { name: 'Theme' })).toBeTruthy();
+  });
+
+  it('starts from the saved choice', () => {
+    localStorage.setItem('fairshift.theme', 'light');
+    render(<ThemeSwitch />);
+    expect(screen.getByRole('radio', { name: 'Light' })).toHaveProperty('checked', true);
+    expect(screen.getByRole('radio', { name: 'Auto' })).toHaveProperty('checked', false);
   });
 
   it('applies a saved choice before the app renders', () => {

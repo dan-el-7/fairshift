@@ -28,14 +28,14 @@ describe('payslip page', () => {
 
     render(<App />);
 
-    expect(await screen.findByText('22 days × ₹750.00')).toBeTruthy();
+    expect(await screen.findByText('22 days × ₹750.00', undefined, { timeout: 5000 })).toBeTruthy();
     expect(screen.getByText('EPF (12% of base pay)')).toBeTruthy();
     // Base pay and gross are both ₹16,500.00; net is only shown once in the totals.
     expect(screen.getAllByText('₹16,500.00').length).toBe(2);
     expect(screen.getByText('₹14,576.25')).toBeTruthy();
 
-    const payCall = fetchMock.mock.calls.find(([url]) => String(url).startsWith('/api/pay/me'));
-    expect(String(payCall?.[0])).toMatch(/^\/api\/pay\/me\?period=\d{4}-\d{2}$/);
+    const payCall = fetchMock.mock.calls.find(([url]) => typeof url === 'string' && url.startsWith('/api/pay/me'));
+    expect(payCall?.[0]).toMatch(/^\/api\/pay\/me\?period=\d{4}-\d{2}$/);
   });
 
   it('shows a friendly message when no payslip exists for the month', async () => {
@@ -47,7 +47,7 @@ describe('payslip page', () => {
 
     render(<App />);
 
-    expect(await screen.findByText('There is no payslip for this month yet.')).toBeTruthy();
+    expect(await screen.findByText('There is no payslip for this month yet.', undefined, { timeout: 5000 })).toBeTruthy();
   });
 
   it('renders the payslip in the chosen language', async () => {

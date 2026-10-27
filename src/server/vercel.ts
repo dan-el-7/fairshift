@@ -1,4 +1,3 @@
-import { handle } from 'hono/vercel';
 import { buildApp } from './bootstrap';
 
 type FetchHandler = (req: Request) => Response | Promise<Response>;
@@ -9,7 +8,8 @@ let handlerPromise: Promise<FetchHandler> | undefined;
 
 function getHandler(): Promise<FetchHandler> {
   handlerPromise ??= buildApp(process.env).then(
-    (app) => handle(app),
+    // Same behaviour as hono/vercel's handle (deprecated there): pass each Request straight to Hono.
+    (app) => (req) => app.fetch(req),
     (err: unknown) => {
       handlerPromise = undefined;
       throw err;

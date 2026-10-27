@@ -21,8 +21,20 @@ interface Completed {
  * Returns at most one flag per rule (the most recent occurrence), newest first.
  */
 export function detectFatigue(shifts: Shift[], now: Date): FatigueFlag[] {
-  const nowMs = now.getTime();
-  const completed: Completed[] = shifts
+  const completed = completedWithin(shifts, now.getTime());
+  const days = [...new Set(completed.map((s) => s.day))].sort();
+
+  return keepMostRecentPerRule([
+    ...longShiftFlags(completed),
+    ...shortRestFlags(completed),
+    ...noRestDayFlags(completed, days),
+    ...weeklyOverloadFlags(completed, days),
+  ]);
+}
+
+/** Completed shifts that started inside the lookback window, oldest first. */
+function completedWithin(shifts: Shift[], nowMs: number): Completed[] {
+  return shifts
     .filter((s): s is Shift & { checkOut: string } => s.checkOut !== null)
     .map((s) => {
       const checkInMs = toMs(s.checkIn);
@@ -38,9 +50,10 @@ export function detectFatigue(shifts: Shift[], now: Date): FatigueFlag[] {
     })
     .filter((s) => s.checkInMs >= nowMs - LOOKBACK_MS && s.checkInMs <= nowMs)
     .sort((a, b) => a.checkInMs - b.checkInMs);
+}
 
+function longShiftFlags(completed: Completed[]): FatigueFlag[] {
   const flags: FatigueFlag[] = [];
-
   for (const s of completed) {
     if (s.hours > LONG_SHIFT_HOURS) {
       flags.push({
@@ -51,7 +64,11 @@ export function detectFatigue(shifts: Shift[], now: Date): FatigueFlag[] {
       });
     }
   }
+  return flags;
+}
 
+function shortRestFlags(completed: Completed[]): FatigueFlag[] {
+  const flags: FatigueFlag[] = [];
   for (let i = 1; i < completed.length; i++) {
     const prev = completed[i - 1];
     const cur = completed[i];
@@ -66,8 +83,12 @@ export function detectFatigue(shifts: Shift[], now: Date): FatigueFlag[] {
       });
     }
   }
+  return flags;
+}
 
-  const days = [...new Set(completed.map((s) => s.day))].sort();
+/** A run of at least NO_REST_RUN_DAYS consecutive days with a shift, flagged on its last day. */
+function noRestDayFlags(completed: Completed[], days: string[]): FatigueFlag[] {
+  const flags: FatigueFlag[] = [];
   let runStart = 0;
   for (let i = 0; i < days.length; i++) {
     const prevDay = days[i - 1];
@@ -85,7 +106,12 @@ export function detectFatigue(shifts: Shift[], now: Date): FatigueFlag[] {
       });
     }
   }
+  return flags;
+}
 
+/** Total hours in each rolling seven-day window that ends on a worked day, when over the limit. */
+function weeklyOverloadFlags(completed: Completed[], days: string[]): FatigueFlag[] {
+  const flags: FatigueFlag[] = [];
   for (const endDay of days) {
     const windowStart = addDays(endDay, -6);
     const inWindow = completed.filter((s) => s.day >= windowStart && s.day <= endDay);
@@ -100,8 +126,7 @@ export function detectFatigue(shifts: Shift[], now: Date): FatigueFlag[] {
       });
     }
   }
-
-  return keepMostRecentPerRule(flags);
+  return flags;
 }
 
 function round1(n: number): number {

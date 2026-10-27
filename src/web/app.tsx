@@ -72,19 +72,70 @@ function Routes({ route }: { route: Route }) {
   return <NotFound />;
 }
 
+/** The role whose intro should show after login, or null. Callers show the other overlays first. */
+function pendingIntroRole(me: Me | null | undefined, dismissed: Role | null): Role | null {
+  if (!me || me.role === dismissed || hasSeenIntro(me.role)) return null;
+  return me.role;
+}
+
+/** Header with the brand, help and text size controls, and log out when signed in. */
+function AppHeader({ me }: { me: Me | null | undefined }) {
+  return (
+    <header class="app-header">
+      <a class="brand" href="#/">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+            <path d="M5.5 12.5l4.2 4.2L18.5 7.5" />
+          </svg>
+        </span>
+        <span class="brand-name">{t('app.name')}</span>
+      </a>
+      <div class="header-actions">
+        <LanguageHelpButton />
+        <TextSizeToggle />
+        {me ? (
+          <button type="button" class="btn btn-ghost btn-small" onClick={() => void logout()}>
+            <Icon name="logout" size={20} />
+            <span class="collapse-sm">{t('nav.logout')}</span>
+          </button>
+        ) : null}
+      </div>
+    </header>
+  );
+}
+
+interface OverlayProps {
+  welcome: boolean;
+  firstVisit: boolean;
+  introRole: Role | null;
+  role: Role | null;
+  onReplayDone: () => void;
+  onFirstDone: () => void;
+  onIntroDone: (role: Role) => void;
+}
+
+/** Shows at most one onboarding overlay, in priority order: replay, first visit, then a role intro. */
+function Overlay({ welcome, firstVisit, introRole, role, onReplayDone, onFirstDone, onIntroDone }: OverlayProps) {
+  if (welcome) return <Onboarding key="replay" mode="replay" role={role} onDone={onReplayDone} />;
+  if (firstVisit) return <Onboarding key="first" mode="first" onDone={onFirstDone} />;
+  if (introRole) {
+    return <Onboarding key={`intro-${introRole}`} mode="intro" role={introRole} onDone={() => onIntroDone(introRole)} />;
+  }
+  return null;
+}
+
 export function App() {
   const lang = useLang();
   const route = useRoute();
   const me = useSession();
   const mainRef = useRef<HTMLElement>(null);
-  const root = route.path.split('/').filter(Boolean)[0];
+  const root = route.path.split('/').find(Boolean);
 
   // Overlay priority: #/welcome replay, then the first-visit flow, then a role intro after login. Only one shows at a time.
   const welcome = root === 'welcome';
   const [firstVisit, setFirstVisit] = useState(() => !hasOnboarded());
   const [introDismissed, setIntroDismissed] = useState<Role | null>(null);
-  const introRole: Role | null =
-    !welcome && !firstVisit && me && me.role !== introDismissed && !hasSeenIntro(me.role) ? me.role : null;
+  const introRole = pendingIntroRole(me, introDismissed);
 
   useEffect(() => {
     void ensureSession();
@@ -109,6 +160,9 @@ export function App() {
     mainRef.current?.focus();
   }, [route.path]);
 
+  // The overlay's focused control is removed when it closes; send focus to the page instead of the body.
+  const focusMain = () => mainRef.current?.focus();
+
   const mainClass = [root === 'a' ? 'main-wide' : '', root === 'w' ? 'has-bottom-nav' : ''].filter(Boolean).join(' ');
 
   return (
@@ -131,41 +185,26 @@ export function App() {
       >
         {t('nav.skip')}
       </a>
-      <header class="app-header">
-        <a class="brand" href="#/">
-          <span class="brand-mark" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
-              <path d="M5.5 12.5l4.2 4.2L18.5 7.5" />
-            </svg>
-          </span>
-          <span class="brand-name">{t('app.name')}</span>
-        </a>
-        <div class="header-actions">
-          <LanguageHelpButton />
-          <TextSizeToggle />
-          {me ? (
-            <button type="button" class="btn btn-ghost btn-small" onClick={() => void logout()}>
-              <Icon name="logout" size={20} />
-              <span class="collapse-sm">{t('nav.logout')}</span>
-            </button>
-          ) : null}
-        </div>
-      </header>
-      {welcome ? (
-        <Onboarding
-          key="replay"
-          mode="replay"
-          role={me?.role ?? null}
-          onDone={() => {
-            setFirstVisit(false);
-            navigate('/');
-          }}
-        />
-      ) : firstVisit ? (
-        <Onboarding key="first" mode="first" onDone={() => setFirstVisit(false)} />
-      ) : introRole ? (
-        <Onboarding key={`intro-${introRole}`} mode="intro" role={introRole} onDone={() => setIntroDismissed(introRole)} />
-      ) : null}
+      <AppHeader me={me} />
+      <Overlay
+        welcome={welcome}
+        firstVisit={firstVisit}
+        introRole={introRole}
+        role={me?.role ?? null}
+        onReplayDone={() => {
+          setFirstVisit(false);
+          navigate('/');
+          focusMain();
+        }}
+        onFirstDone={() => {
+          setFirstVisit(false);
+          focusMain();
+        }}
+        onIntroDone={(role) => {
+          setIntroDismissed(role);
+          focusMain();
+        }}
+      />
       <main id="main" ref={mainRef} tabIndex={-1} class={mainClass || undefined}>
         <OfflineBanner />
         <Suspense fallback={<Spinner />}>

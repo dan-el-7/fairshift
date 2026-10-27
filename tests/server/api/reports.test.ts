@@ -130,8 +130,8 @@ describe('GET /api/reports/track/:caseCode', () => {
   it('shows admin updates on the public track view', async () => {
     const t = await makeTestApp();
     const cookie = await login(t, ADMIN_SKYLINE);
-    const reports = await json<Array<{ id: string; caseCode: string }>>(await send(t, 'GET', '/api/admin/reports', { cookie }));
-    const target = reports.find((r) => r.caseCode !== undefined);
+    const reports = await json<{ id: string; caseCode: string }[]>(await send(t, 'GET', '/api/admin/reports', { cookie }));
+    const target = reports[0];
     if (!target) throw new Error('seed has no reports');
     await send(t, 'PATCH', `/api/admin/reports/${target.id}`, {
       cookie,

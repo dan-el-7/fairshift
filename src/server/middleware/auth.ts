@@ -84,5 +84,6 @@ export function requireRole(role: Role): MiddlewareHandler<AppEnv> {
     if (!user) return c.json({ error: 'sign in required' }, 401);
     if (user.role !== role) return c.json({ error: 'not allowed for this role' }, 403);
     await next();
+    return;
   };
 }

@@ -107,7 +107,7 @@ export interface AdminOverview {
     highRiskWorkers: number;
   };
   /** one point per IST day, oldest first */
-  attendance14d: Array<{ day: string; present: number; overtimeHours: number }>;
+  attendance14d: { day: string; present: number; overtimeHours: number }[];
   reportsBySeverity: Record<Severity, number>;
   reportsByStatus: Record<ReportStatus, number>;
   atRisk: WorkerSummary[];

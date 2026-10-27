@@ -95,7 +95,7 @@ export default function Pay({ me }: { me: Me }) {
         <label class="field-label" for="pay-period">
           {t('pay.month')}
         </label>
-        <select id="pay-period" value={period} onChange={(event) => setPeriod((event.currentTarget as HTMLSelectElement).value)}>
+        <select id="pay-period" value={period} onChange={(event) => setPeriod((event.currentTarget).value)}>
           {periods.map((id) => (
             <option key={id} value={id}>
               {periodLabel(id)}

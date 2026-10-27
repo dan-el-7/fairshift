@@ -20,20 +20,18 @@ export function setSession(next: Me | null): void {
 /** Loads GET /api/me once. Concurrent callers share one request. */
 export function ensureSession(): Promise<Me | null> {
   if (me !== undefined) return Promise.resolve(me);
-  if (!pending) {
-    pending = tryGet<Me>('/api/me')
-      .then((loaded) => {
-        publish(loaded);
-        return loaded;
-      })
-      .catch(() => {
-        publish(null);
-        return null;
-      })
-      .finally(() => {
-        pending = null;
-      });
-  }
+  pending ??= tryGet<Me>('/api/me')
+    .then((loaded) => {
+      publish(loaded);
+      return loaded;
+    })
+    .catch(() => {
+      publish(null);
+      return null;
+    })
+    .finally(() => {
+      pending = null;
+    });
   return pending;
 }
 

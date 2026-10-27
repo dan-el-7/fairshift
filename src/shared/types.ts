@@ -19,7 +19,7 @@ export interface IndustryConfig {
   nightAllowancePerHour: number;
   halfDayThresholdHours: number;
   hazardCategories: string[];
-  checkInModes: Array<'qr' | 'geo'>;
+  checkInModes: ('qr' | 'geo')[];
 }
 
 export interface Site {
@@ -174,6 +174,6 @@ export interface PassportEntry {
 
 export interface PassportPayload {
   workerName: string;
-  entries: Array<Omit<PassportEntry, 'workerId'>>;
+  entries: Omit<PassportEntry, 'workerId'>[];
   issuedAt: string; // ISO
 }

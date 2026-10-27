@@ -86,7 +86,7 @@ export function adminRoutes(deps: Deps): Hono<AppEnv> {
     if (!ctx) return c.json({ error: 'sign in required' }, 401);
 
     const existing = await repo.getReport(c.req.param('id'));
-    if (!existing || existing.siteId !== ctx.site.id) return jsonError(c, 404, 'report not found');
+    if (existing?.siteId !== ctx.site.id) return jsonError(c, 404, 'report not found');
 
     const today = istDay(deps.now());
     const update: Report['updates'][number] = { status: body.status, day: today };
@@ -125,7 +125,7 @@ export function adminRoutes(deps: Deps): Hono<AppEnv> {
     if (!ctx) return c.json({ error: 'sign in required' }, 401);
 
     const worker = await repo.getWorker(body.workerId);
-    if (!worker || worker.siteId !== ctx.site.id || worker.role !== 'worker') {
+    if (worker?.siteId !== ctx.site.id || worker.role !== 'worker') {
       return jsonError(c, 404, 'worker not found');
     }
 

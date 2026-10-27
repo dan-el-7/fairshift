@@ -20,7 +20,7 @@ export async function sessionContext(c: Context<AppEnv>, repo: Repo): Promise<Se
   const user = c.get('user');
   if (!user) return null;
   const worker = await repo.getWorker(user.id);
-  if (!worker || worker.role !== user.role || worker.siteId !== user.siteId) return null;
+  if (worker?.role !== user.role || worker.siteId !== user.siteId) return null;
   const site = await repo.getSite(worker.siteId);
   if (!site) return null;
   return { worker, site, cfg: INDUSTRIES[site.industry] };

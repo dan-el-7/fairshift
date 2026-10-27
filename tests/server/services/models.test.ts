@@ -3,7 +3,7 @@ import type { GenAiClient } from '../../../src/server/services/ai';
 import { listModelNames, textModelCandidates } from '../../../src/server/services/models';
 
 /** An async-iterable stand-in for the SDK's Pager. */
-function pagerOf(items: Array<Record<string, unknown>>) {
+function pagerOf(items: Record<string, unknown>[]) {
   return {
     async *[Symbol.asyncIterator]() {
       yield* items;
@@ -11,7 +11,7 @@ function pagerOf(items: Array<Record<string, unknown>>) {
   };
 }
 
-function listingClient(items: Array<Record<string, unknown>>) {
+function listingClient(items: Record<string, unknown>[]) {
   const list = vi.fn(async () => pagerOf(items));
   return { client: { models: { list } } as unknown as GenAiClient, list };
 }

@@ -93,7 +93,7 @@
   "pay.speech.line": "{label}: {amount}. ",
   "pay.speech.totals": "Gross pay {gross}. Deductions {deductions}. Net pay in hand {net}.",
   "report.title": "Report a problem",
-  "report.anonymous": "This report is anonymous. We do not store your name, phone number or who you are. Only your site is sent.",
+  "report.anonymous": "This report is anonymous: your name, phone number and account are not attached, and only your site is sent. Avoid writing your own name in it. Phone numbers and emails you type are hidden automatically.",
   "report.whatWrong": "What is the problem?",
   "report.describe": "Describe the problem",
   "report.placeholder": "Write what happened, where and when.",

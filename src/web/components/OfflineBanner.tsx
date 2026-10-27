@@ -4,7 +4,7 @@ import { t, useLang } from '../i18n';
 /** Shows a notice while the browser is offline. The container stays in place so screen readers announce changes. */
 export function OfflineBanner() {
   useLang();
-  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  const [offline, setOffline] = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
 
   useEffect(() => {
     const goOnline = () => setOffline(false);

@@ -12,7 +12,7 @@ async function main(): Promise<void> {
 
   const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
     const aiMode = config.geminiApiKey ? 'gemini' : config.googleProject ? 'vertex' : 'heuristic';
-    console.log(`FairShift listening on port ${info.port} (store=${config.store}, ai=${aiMode})`);
+    console.info(`FairShift listening on port ${info.port} (store=${config.store}, ai=${aiMode})`);
   });
 
   let stopping = false;
