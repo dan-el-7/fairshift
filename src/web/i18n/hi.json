@@ -284,5 +284,10 @@
   "nav.short.attendance": "हाज़िरी",
   "nav.short.pay": "वेतन",
   "nav.short.report": "शिकायत",
-  "nav.short.skills": "कौशल"
+  "nav.short.skills": "कौशल",
+  "theme.label": "थीम",
+  "theme.auto": "अपने-आप",
+  "theme.light": "हल्की",
+  "theme.dark": "गहरी",
+  "footer.tagline": "FairShift · संयुक्त राष्ट्र SDG 8: सम्मानजनक काम"
 }

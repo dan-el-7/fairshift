@@ -284,5 +284,10 @@
   "nav.short.attendance": "வருகை",
   "nav.short.pay": "ஊதியம்",
   "nav.short.report": "புகார்",
-  "nav.short.skills": "திறன்"
+  "nav.short.skills": "திறன்",
+  "theme.label": "தோற்றம்",
+  "theme.auto": "தானாக",
+  "theme.light": "வெளிர்",
+  "theme.dark": "இருள்",
+  "footer.tagline": "FairShift · ஐ.நா. SDG 8: கண்ணியமான வேலை"
 }

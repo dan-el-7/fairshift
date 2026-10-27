@@ -9,6 +9,7 @@ import { LanguageHelpButton } from './components/LanguageSheet';
 import { OfflineBanner } from './components/OfflineBanner';
 import { hasOnboarded, hasSeenIntro, Onboarding } from './components/Onboarding';
 import { TextSizeToggle } from './components/TextSizeToggle';
+import { ThemeSwitch } from './components/ThemeSwitch';
 import { adoptUserLanguage, t, useLang } from './i18n';
 import { navigate, type Route, useRoute } from './router';
 import { ensureSession, logout, useSession } from './session';
@@ -177,6 +178,10 @@ export function App() {
             </div>
           )}
         </Suspense>
+        <footer class="app-footer">
+          <span class="app-footer-tag">{t('footer.tagline')}</span>
+          <ThemeSwitch />
+        </footer>
       </main>
     </>
   );

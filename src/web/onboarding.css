@@ -27,7 +27,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .ob-root:not([data-theme='light']) {
+  :root:not([data-theme='light']) .ob-root {
     --ob-base: #0b1215;
     --ob-text: #e6edf0;
     --ob-muted: #a3b3ba;
@@ -40,7 +40,7 @@
   }
 }
 
-.ob-root[data-theme='dark'] {
+:root[data-theme='dark'] .ob-root {
   --ob-base: #0b1215;
   --ob-text: #e6edf0;
   --ob-muted: #a3b3ba;

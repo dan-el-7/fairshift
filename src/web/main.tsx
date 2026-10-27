@@ -1,9 +1,12 @@
 import { render } from 'preact';
 import { App } from './app';
 import { applySavedTextSize } from './components/TextSizeToggle';
+import { applyTheme, savedTheme } from './theme';
 import './styles.css';
 import './qol.css';
 
+// Before the first render, so a saved theme never flashes the other one.
+applyTheme(savedTheme());
 applySavedTextSize();
 render(<App />, document.getElementById('app') as HTMLElement);
 

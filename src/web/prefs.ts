@@ -6,6 +6,8 @@ export const PREF = {
   textLarge: 'fairshift.textLarge',
   /** '1' once the first-visit language sheet has been closed. */
   languageSheetSeen: 'fairshift.langSheetSeen',
+  /** 'light' or 'dark' when the user overrides the device theme; absent means follow the device. */
+  theme: 'fairshift.theme',
 } as const;
 
 export type PrefScope = 'local' | 'session';
