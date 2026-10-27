@@ -43,6 +43,18 @@ export function createFakeKv(): FakeKv {
     async smembers(key) {
       return [...(sets.get(key) ?? [])];
     },
+    async deletePrefix(prefix) {
+      let deleted = 0;
+      for (const store of [strings, hashes, sets] as Array<Map<string, unknown>>) {
+        for (const key of [...store.keys()]) {
+          if (key.startsWith(prefix)) {
+            store.delete(key);
+            deleted += 1;
+          }
+        }
+      }
+      return deleted;
+    },
     dump() {
       const out: Array<[string, string]> = [...strings];
       for (const [key, hash] of hashes) for (const value of hash.values()) out.push([key, value]);

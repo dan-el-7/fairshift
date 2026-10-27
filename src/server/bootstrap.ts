@@ -6,6 +6,7 @@ import { createReportAi } from './services/ai';
 import type { Repo } from './store/repo';
 import { createMemoryRepo } from './store/memory';
 import { bufferWrites, createRedisRepo, createUpstashKv, type RedisRepo } from './store/redis';
+import { istDay } from './domain/time';
 import { seedDemo } from './store/seed';
 
 export interface BuildOptions {
@@ -52,13 +53,18 @@ async function openRepo(config: ServerConfig): Promise<Repo> {
     if (!redis) throw new Error('STORE=redis needs a Redis endpoint');
     const kv = createUpstashKv(redis.url, redis.token);
     const repo: RedisRepo = createRedisRepo(kv);
-    if (!(await repo.isSeeded())) {
+    // The demo's shifts are generated relative to "today", so the shared demo refreshes once per
+    // IST day; otherwise dashboards would show stale attendance a few days after deployment.
+    const now = new Date();
+    const today = istDay(now);
+    if ((await repo.seededDay()) !== today) {
+      await repo.clear();
       // Seed through a write buffer: a few pipelined round trips instead of hundreds. The seed is
       // deterministic, so two instances cold-starting together just write the same keys twice.
       const buffered = bufferWrites(kv);
-      await seedDemo(createRedisRepo(buffered), new Date());
+      await seedDemo(createRedisRepo(buffered), now);
       await buffered.flush();
-      await repo.markSeeded(new Date().toISOString());
+      await repo.markSeeded(today);
     }
     return repo;
   }

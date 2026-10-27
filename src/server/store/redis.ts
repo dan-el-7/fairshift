@@ -23,6 +23,8 @@ export interface KvClient {
   /** Adds a member. Resolves to 1 when it was new, 0 when it was already present. */
   sadd(key: string, member: string): Promise<number>;
   smembers(key: string): Promise<string[]>;
+  /** Deletes every key starting with `prefix`. Used to refresh the demo data. */
+  deletePrefix(prefix: string): Promise<number>;
   /** Sends many writes in as few round trips as possible. Optional: falls back to one call per write. */
   writeMany?(ops: WriteOp[]): Promise<void>;
 }
@@ -57,6 +59,16 @@ export function createUpstashKv(url: string, token: string): KvClient {
     hgetall: async (key) => hashToRecord(await redis.hgetall(key)),
     sadd: async (key, member) => Number(await redis.sadd(key, member)),
     smembers: async (key) => (await redis.smembers(key)) as string[],
+    async deletePrefix(prefix) {
+      let cursor = '0';
+      let deleted = 0;
+      do {
+        const [next, keys] = await redis.scan(cursor, { match: `${prefix}*`, count: 500 });
+        cursor = String(next);
+        if (keys.length > 0) deleted += await redis.del(...keys);
+      } while (cursor !== '0');
+      return deleted;
+    },
     async writeMany(ops) {
       for (let i = 0; i < ops.length; i += PIPELINE_CHUNK) {
         const pipe = redis.pipeline();
@@ -83,6 +95,7 @@ export function bufferWrites(kv: KvClient): KvClient & { flush(): Promise<void> 
     hgetall: (key) => kv.hgetall(key),
     smembers: (key) => kv.smembers(key),
     setnx: (key, value) => kv.setnx(key, value),
+    deletePrefix: (prefix) => kv.deletePrefix(prefix),
     async set(key, value) {
       queue.push(['set', key, value]);
     },
@@ -105,11 +118,14 @@ export function bufferWrites(kv: KvClient): KvClient & { flush(): Promise<void> 
   };
 }
 
-/** The Repo plus a marker recording that the demo data has been written. */
+/** The Repo plus the bookkeeping for the shared demo data. */
 export interface RedisRepo extends Repo {
-  isSeeded(): Promise<boolean>;
+  /** The IST day (YYYY-MM-DD) the demo data was generated for, or null if never seeded. */
+  seededDay(): Promise<string | null>;
   /** Set only after a seed has fully succeeded, so a crash mid-seed is retried on the next cold start. */
-  markSeeded(timestamp: string): Promise<void>;
+  markSeeded(day: string): Promise<void>;
+  /** Removes all FairShift keys, so a fresh seed does not mix with older generated shifts. */
+  clear(): Promise<void>;
 }
 
 const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -144,12 +160,17 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
   }
 
   return {
-    async isSeeded() {
-      return (await kv.get('fs:seeded')) !== null;
+    async seededDay() {
+      const value = await kv.get('fs:seeded');
+      return value === null ? null : value.slice(0, 10);
     },
 
-    async markSeeded(timestamp) {
-      await kv.set('fs:seeded', timestamp);
+    async markSeeded(day) {
+      await kv.set('fs:seeded', day);
+    },
+
+    async clear() {
+      await kv.deletePrefix('fs:');
     },
 
     async listSites() {

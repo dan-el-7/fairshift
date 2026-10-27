@@ -155,11 +155,21 @@ describe('redis store specifics', () => {
     expect(hashToRecord([])).toEqual({});
   });
 
-  it('records the seed only when marked', async () => {
+  it('records the seeded day only when marked', async () => {
     const repo = createRedisRepo(createFakeKv());
-    expect(await repo.isSeeded()).toBe(false);
-    await repo.markSeeded('2026-10-27T10:00:00.000Z');
-    expect(await repo.isSeeded()).toBe(true);
+    expect(await repo.seededDay()).toBeNull();
+    await repo.markSeeded('2026-10-27');
+    expect(await repo.seededDay()).toBe('2026-10-27');
+  });
+
+  it('clears every FairShift key so a new day starts from a clean seed', async () => {
+    const kv = createFakeKv();
+    const repo = createRedisRepo(kv);
+    await seedDemo(repo, new Date('2026-10-27T10:00:00Z'));
+    await repo.markSeeded('2026-10-27');
+    await repo.clear();
+    expect(kv.dump()).toHaveLength(0);
+    expect(await repo.seededDay()).toBeNull();
   });
 
   it('seeds the full demo through a write buffer in one batch', async () => {
