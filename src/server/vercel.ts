@@ -1,5 +1,5 @@
 import { handle } from 'hono/vercel';
-import { buildApp } from '../src/server/bootstrap';
+import { buildApp } from './bootstrap';
 
 type FetchHandler = (req: Request) => Response | Promise<Response>;
 
@@ -18,8 +18,13 @@ function getHandler(): Promise<FetchHandler> {
   return handlerPromise;
 }
 
-/** Vercel Node function for every /api/* request. Static files are served by Vercel, not here. */
-export default async function handler(req: Request): Promise<Response> {
+/**
+ * Request handler for the Vercel function. Bundled by `npm run build:api` into api/_handler.mjs so
+ * Vercel runs one self-contained file (Node ESM cannot resolve the source's extensionless imports).
+ * Vercel Node function for every /api/* request (vercel.json rewrites them here; the request keeps
+ * its original path, so Hono routes it normally). Static files are served by Vercel, not here.
+ */
+export async function handler(req: Request): Promise<Response> {
   try {
     const fetchApp = await getHandler();
     return await fetchApp(req);

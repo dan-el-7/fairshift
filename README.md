@@ -2,7 +2,7 @@
 
 Fair, safe and transparent work for daily-wage and campus staff (UN SDG 8, Decent Work).
 
-**Live demo:** <CLOUD_RUN_URL>
+**Live demo:** https://fairshift-alpha.vercel.app
 
 FairShift is one web app for two kinds of employers. Workers check in, see exactly how their pay was calculated, report safety problems anonymously in their own language, and keep a verifiable record of their skills. Employers see attendance, fatigue and overdue safety cases in one dashboard.
 
@@ -226,7 +226,7 @@ To use Firestore locally, run `gcloud auth application-default login` and set `S
 
 ## Deploy to Vercel
 
-The app deploys to Vercel as a static site plus one Node function for `/api/*`. Build settings come from `vercel.json` (`npm run build:web` builds the SPA into `dist/web`; `api/[[...route]].ts` serves the API).
+The app deploys to Vercel as a static site plus one Node function for `/api/*`. Build settings come from `vercel.json` (`npm run build:web` builds the SPA into `dist/web`; `api/index.ts` serves the API).
 
 1. Import this repository in Vercel (Add New, Project).
 2. In the project, open **Storage**, add **Upstash Redis** from the Vercel Marketplace and connect it to the project. This sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, and the data then persists in Redis. The demo organisation is seeded once, on the first request.

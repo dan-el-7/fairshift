@@ -20,7 +20,7 @@ export interface BuiltApp {
 
 /**
  * Builds config, store (seeded once), AI service and the Hono app. Used by the Node entry point
- * (src/server/index.ts) and the Vercel function (api/[[...route]].ts).
+ * (src/server/index.ts) and the Vercel function (api/index.ts).
  */
 export async function buildAppWithConfig(env: NodeJS.ProcessEnv = process.env, options: BuildOptions = {}): Promise<BuiltApp> {
   const config = loadConfig(env);
