@@ -971,6 +971,10 @@ legend {
 .greeting-actions > .btn {
   flex: 1 1 240px;
 }
+/* Centred like the button's label, so the pair reads as a matched set. */
+.greeting-actions .status-chip {
+  justify-content: center;
+}
 .status-row {
   display: flex;
   flex-wrap: wrap;
