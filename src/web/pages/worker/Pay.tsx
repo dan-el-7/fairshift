@@ -110,6 +110,17 @@ export default function Pay({ me }: { me: Me }) {
 
       {slip ? (
         <>
+          {/* Take-home pay first: the number a worker looks for, then the breakdown that explains it. */}
+          <section class="card net-panel" aria-labelledby="net-title">
+            <h2 id="net-title" class="visually-hidden">
+              {t('pay.net')}
+            </h2>
+            <div class="total-net">
+              <span>{t('pay.net')}</span>
+              <span class="money-net">{formatMoney(slip.net)}</span>
+            </div>
+          </section>
+
           <section class="card receipt" aria-labelledby="period-title">
             <div class="receipt-head">
               <h2 id="period-title">{periodLabel(slip.period.id)}</h2>
@@ -136,16 +147,6 @@ export default function Pay({ me }: { me: Me }) {
                 <span class="amount">{formatMoney(slip.deductions)}</span>
               </div>
             </section>
-          </section>
-
-          <section class="card net-panel" aria-labelledby="net-title">
-            <h2 id="net-title" class="visually-hidden">
-              {t('pay.net')}
-            </h2>
-            <div class="total-net">
-              <span>{t('pay.net')}</span>
-              <span class="money-net">{formatMoney(slip.net)}</span>
-            </div>
           </section>
 
           <button type="button" class="btn btn-block" onClick={() => speak(payslipSpeech(slip, payModel), lang)}>
