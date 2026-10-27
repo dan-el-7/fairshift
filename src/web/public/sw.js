@@ -1,10 +1,17 @@
 /* FairShift service worker. Bump VERSION when shipping changes that must reach offline users. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `fairshift-shell-${VERSION}`;
 const STATIC_CACHE = `fairshift-static-${VERSION}`;
 const KNOWN_CACHES = [SHELL_CACHE, STATIC_CACHE];
 const SHELL_URLS = ['/', '/index.html'];
-const STATIC_URLS = ['/manifest.webmanifest', '/icon.svg'];
+const STATIC_URLS = [
+  '/manifest.webmanifest',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
