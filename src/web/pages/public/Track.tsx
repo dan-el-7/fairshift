@@ -1,0 +1,132 @@
+import { useEffect, useState } from 'preact/hooks';
+import type { ReportPublic } from '../../../shared/api';
+import type { ReportStatus } from '../../../shared/types';
+import { ApiError, api, errorMessage } from '../../api';
+import { Banner } from '../../components/Banner';
+import { SeverityBadge } from '../../components/Badge';
+import { Icon } from '../../components/Icon';
+import { SpeakButton } from '../../components/SpeakButton';
+import { Spinner } from '../../components/Spinner';
+import { formatDay, t, type TKey } from '../../i18n';
+import { useRoute } from '../../router';
+
+const STEPS: ReportStatus[] = ['open', 'acknowledged', 'in_progress', 'resolved'];
+
+export default function Track() {
+  const route = useRoute();
+  const codeParam = route.query.get('code');
+  const [code, setCode] = useState(codeParam ?? '');
+  const [report, setReport] = useState<ReportPublic | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function search(raw: string) {
+    const clean = raw.trim().toUpperCase();
+    if (!clean) return;
+    setBusy(true);
+    setError(null);
+    setReport(null);
+    try {
+      setReport(await api.get<ReportPublic>(`/api/reports/track/${encodeURIComponent(clean)}`));
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 404 ? t('track.notFound') : errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // A shared link such as #/track?code=ABCD-EFGH looks the report up straight away.
+  useEffect(() => {
+    if (codeParam) {
+      setCode(codeParam);
+      void search(codeParam);
+    }
+  }, [codeParam]);
+
+  const currentIndex = report ? STEPS.indexOf(report.status) : -1;
+
+  return (
+    <div class="stack">
+      <h1>{t('track.title')}</h1>
+      <form
+        class="card stack"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void search(code);
+        }}
+      >
+        <div class="field">
+          <label class="field-label" for="case-code">
+            {t('track.codeLabel')}
+          </label>
+          <input
+            id="case-code"
+            type="text"
+            value={code}
+            placeholder={t('track.codePlaceholder')}
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck={false}
+            onInput={(event) => setCode((event.currentTarget as HTMLInputElement).value)}
+          />
+          <p class="muted">{t('track.helpText')}</p>
+        </div>
+        <div class="row">
+          <button type="submit" class="btn btn-primary" disabled={busy}>
+            <Icon name="track" size={22} />
+            {t('track.search')}
+          </button>
+          <SpeakButton text={t('track.search')} />
+        </div>
+      </form>
+
+      {busy ? <Spinner /> : null}
+      {error ? <Banner tone="danger">{error}</Banner> : null}
+
+      {report ? (
+        <section class="card stack" aria-labelledby="case-title">
+          <h2 id="case-title">{report.caseCode}</h2>
+          <p>{t('track.reportedOn', { day: formatDay(report.createdDay) })}</p>
+          <p>
+            {t('track.category')}: {t(`hazard.${report.category}` as TKey)}
+          </p>
+          <p>
+            {t('track.severity')}: <SeverityBadge severity={report.severity} />
+          </p>
+
+          <h3>
+            {t('track.timeline')} ({t('track.status')})
+          </h3>
+          <ol class="timeline">
+            {STEPS.map((step, index) => (
+              <li
+                key={step}
+                class={index <= currentIndex ? 'done' : undefined}
+                aria-current={index === currentIndex ? 'step' : undefined}
+              >
+                {index <= currentIndex ? '✔ ' : ''}
+                {t(`status.${step}` as TKey)}
+              </li>
+            ))}
+          </ol>
+
+          <h3>{t('track.updates')}</h3>
+          {report.updates.length === 0 ? (
+            <p class="muted">{t('track.noUpdates')}</p>
+          ) : (
+            <ul class="lines">
+              {report.updates.map((update, index) => (
+                <li key={`${update.day}-${index}`}>
+                  <span>
+                    {formatDay(update.day)}: {t(`status.${update.status}` as TKey)}
+                    {update.note ? ` — ${update.note}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+    </div>
+  );
+}
