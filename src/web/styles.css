@@ -959,13 +959,17 @@ legend {
   align-items: center;
   gap: var(--space-3);
 }
-/* Both grow: side by side when there is room, two full-width rows of equal edges when wrapped. */
-.greeting-actions > .status-row,
-.greeting-actions > .btn {
-  flex: 1 1 auto;
+/*
+ * The chip, its speaker and the button are flex items of one row (the status row's box is dropped),
+ * so on one line the chip and the button share the width equally, with the speaker between them.
+ * When the row is too narrow the button wraps onto its own full-width line.
+ */
+.greeting-actions > .status-row {
+  display: contents;
 }
-.greeting-actions .status-chip {
-  flex: 1;
+.greeting-actions .status-chip,
+.greeting-actions > .btn {
+  flex: 1 1 240px;
 }
 .status-row {
   display: flex;
