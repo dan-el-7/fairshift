@@ -11,3 +11,4 @@ coverage/
 .vercel
 .env*
 api/_handler.mjs
+!.env.example
