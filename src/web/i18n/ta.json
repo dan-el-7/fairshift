@@ -268,5 +268,8 @@
   "admin.feedback.fairness": "நியாயம்",
   "admin.feedback.respect": "மரியாதை",
   "admin.feedback.workload": "வேலைச்சுமை",
-  "admin.feedback.outOf": "5க்கு {score}"
+  "admin.feedback.outOf": "5க்கு {score}",
+  "admin.speech.summary": "{workers} தொழிலாளர்களில் இன்று {present} பேர் பணியில் உள்ளனர். {openReports} திறந்த அறிக்கைகள், {overdueReports} காலம் கடந்தவை. {fatigue} சோர்வு எச்சரிக்கைகள். {highRisk} தொழிலாளர்கள் வேலையை விட்டுச் செல்லும் அதிக ஆபத்தில் உள்ளனர்.",
+  "admin.speech.report": "{category}. முன்னுரிமை {severity}. நிலை {status}. {text}",
+  "admin.speech.feedback": "பாதுகாப்பு: 5க்கு {safety}. நியாயம்: 5க்கு {fairness}. மரியாதை: 5க்கு {respect}. வேலைச்சுமை: 5க்கு {workload}."
 }

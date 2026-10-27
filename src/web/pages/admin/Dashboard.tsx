@@ -1,6 +1,7 @@
 import type { AdminOverview, WorkerSummary } from '../../../shared/api';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { SeverityBadge } from '../../components/Badge';
+import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { t, type TKey } from '../../i18n';
 import { useApiData } from '../../useApiData';
@@ -123,13 +124,29 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
   );
 }
 
+/** Spoken summary of the headline KPIs, in the current UI language. */
+function dashboardSpeech(overview: AdminOverview): string {
+  const k = overview.kpis;
+  return t('admin.speech.summary', {
+    present: k.presentToday,
+    workers: k.workers,
+    openReports: k.openReports,
+    overdueReports: k.overdueReports,
+    fatigue: k.fatigueAlerts,
+    highRisk: k.highRiskWorkers,
+  });
+}
+
 export default function Dashboard() {
   const overview = useApiData<AdminOverview>('/api/admin/overview');
   const data = overview.data;
 
   return (
     <div class="stack">
-      <h1>{t('admin.dashboard.title')}</h1>
+      <div class="heading-row">
+        <h1>{t('admin.dashboard.title')}</h1>
+        {data ? <SpeakButton text={dashboardSpeech(data)} /> : null}
+      </div>
 
       {overview.loading && !data ? <Spinner /> : null}
       {overview.error ? <ErrorMessage error={overview.error} onRetry={overview.reload} /> : null}

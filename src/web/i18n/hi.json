@@ -268,5 +268,8 @@
   "admin.feedback.fairness": "निष्पक्षता",
   "admin.feedback.respect": "सम्मान",
   "admin.feedback.workload": "काम का बोझ",
-  "admin.feedback.outOf": "5 में से {score}"
+  "admin.feedback.outOf": "5 में से {score}",
+  "admin.speech.summary": "{workers} कर्मचारियों में से आज {present} उपस्थित हैं। {openReports} खुली शिकायतें, {overdueReports} समय-सीमा पार। {fatigue} थकान की चेतावनियाँ। {highRisk} कर्मचारी नौकरी छोड़ने के उच्च जोखिम पर हैं।",
+  "admin.speech.report": "{category}। प्राथमिकता {severity}। स्थिति {status}। {text}",
+  "admin.speech.feedback": "सुरक्षा: 5 में से {safety}। निष्पक्षता: 5 में से {fairness}। सम्मान: 5 में से {respect}। काम का बोझ: 5 में से {workload}।"
 }

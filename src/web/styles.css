@@ -612,7 +612,7 @@ legend {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
   gap: 12px;
 }
 
@@ -676,20 +676,28 @@ legend {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
+/* Labels are Tamil/Hindi-friendly: break only between words, never inside a word. */
 .kpi-label {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: auto;
+}
+.heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .kpi-value {
   font-size: 2rem;
   font-weight: 800;
   line-height: 1.1;
-}
-@media (min-width: 600px) {
-  .kpi-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 .chart {
   display: block;

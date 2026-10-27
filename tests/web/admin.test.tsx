@@ -138,6 +138,19 @@ describe('admin dashboard', () => {
     expect(screen.getByText('Risk uses attendance and hours only — never anonymous reports or feedback.')).toBeTruthy();
   });
 
+  it('offers a read-aloud button next to the heading that speaks the KPI summary', async () => {
+    mockFetch({ '/api/me': admin, '/api/admin/overview': overview });
+    window.location.hash = '#/a';
+
+    render(<App />);
+
+    const button = await screen.findByRole('button', { name: /^Read aloud: 4 of 6 workers present today/ });
+    expect(button.getAttribute('aria-label')).toContain('3 open reports');
+    expect(button.getAttribute('aria-label')).toContain('1 overdue');
+    expect(button.getAttribute('aria-label')).toContain('2 fatigue alerts');
+    expect(button.closest('.heading-row')?.querySelector('h1')?.textContent).toBe('Dashboard');
+  });
+
   it('draws the attendance chart with an accessible label and a hidden data table', async () => {
     mockFetch({ '/api/me': admin, '/api/admin/overview': overview });
     window.location.hash = '#/a';
@@ -189,6 +202,25 @@ describe('admin reports', () => {
     const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
     expect(String(patchCall?.[0])).toBe('/api/admin/reports/r1');
     expect(screen.getByText('Report updated.')).toBeTruthy();
+  });
+
+  it('renders one item per report, each with a read-aloud button', async () => {
+    stubApi({
+      '/api/me': () => ({ body: admin }),
+      '/api/admin/reports': () => ({ body: reports }),
+    });
+    window.location.hash = '#/a/reports';
+
+    render(<App />);
+
+    await screen.findByText('Exposed wire hanging near the lift shaft');
+    const items = document.querySelectorAll('.entries > li');
+    expect(items.length).toBe(reports.length);
+    for (const item of items) {
+      expect(within(item as HTMLElement).getByRole('button', { name: /^Read aloud: / })).toBeTruthy();
+    }
+    const critical = items[0] as HTMLElement;
+    expect(within(critical).getByRole('button', { name: /Exposed wire hanging near the lift shaft/ })).toBeTruthy();
   });
 });
 

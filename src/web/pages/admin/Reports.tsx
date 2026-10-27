@@ -5,8 +5,9 @@ import { api } from '../../api';
 import { Banner } from '../../components/Banner';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { SeverityBadge } from '../../components/Badge';
+import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
-import { formatDay, t, type TKey } from '../../i18n';
+import { formatDay, t, useLang, type TKey } from '../../i18n';
 import { useApiData } from '../../useApiData';
 import { categoryLabel, REPORT_STATUSES, sortReports } from './shared';
 
@@ -17,6 +18,7 @@ interface ReportItemProps {
 
 /** One report with its status form. Saving replaces this item in place. */
 function ReportItem({ report, onUpdated }: ReportItemProps) {
+  const lang = useLang();
   const [status, setStatus] = useState<ReportStatus>(report.status);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -45,6 +47,15 @@ function ReportItem({ report, onUpdated }: ReportItemProps) {
   const statusId = `report-status-${report.id}`;
   const noteId = `report-note-${report.id}`;
 
+  // English text in English; the original when it already matches the UI language; otherwise the English translation.
+  const spokenText = lang === 'en' ? report.textEn : report.language === lang ? report.text : report.textEn;
+  const speech = t('admin.speech.report', {
+    category: categoryLabel(report.category),
+    severity: t(`severity.${report.severity}` as TKey),
+    status: t(`status.${report.status}` as TKey),
+    text: spokenText,
+  });
+
   return (
     <li id={`report-${report.id}`}>
       <div class="row">
@@ -52,6 +63,7 @@ function ReportItem({ report, onUpdated }: ReportItemProps) {
         <SeverityBadge severity={report.severity} />
         <span class="badge badge-status">{t(`status.${report.status}` as TKey)}</span>
         {report.overdue ? <span class="badge badge-critical">{t('admin.reports.overdue')}</span> : null}
+        <SpeakButton text={speech} />
       </div>
       <p class="muted">
         {categoryLabel(report.category)} · {t('track.reportedOn', { day: formatDay(report.createdDay) })}

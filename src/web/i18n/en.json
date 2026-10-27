@@ -268,5 +268,8 @@
   "admin.feedback.fairness": "Fairness",
   "admin.feedback.respect": "Respect",
   "admin.feedback.workload": "Workload",
-  "admin.feedback.outOf": "{score} out of 5"
+  "admin.feedback.outOf": "{score} out of 5",
+  "admin.speech.summary": "{present} of {workers} workers present today. {openReports} open reports, {overdueReports} overdue. {fatigue} fatigue alerts. {highRisk} workers at high risk of leaving.",
+  "admin.speech.report": "{category}. Priority {severity}. Status {status}. {text}",
+  "admin.speech.feedback": "{safety} out of 5 for safety. {fairness} out of 5 for fairness. {respect} out of 5 for respect. {workload} out of 5 for workload."
 }

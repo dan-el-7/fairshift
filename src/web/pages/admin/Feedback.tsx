@@ -2,6 +2,7 @@ import type { AdminFeedback } from '../../../shared/api';
 import type { FeedbackRatings } from '../../../shared/types';
 import { Banner } from '../../components/Banner';
 import { ErrorMessage } from '../../components/ErrorMessage';
+import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { t, type TKey } from '../../i18n';
 import { useApiData } from '../../useApiData';
@@ -24,7 +25,19 @@ export default function Feedback() {
 
   return (
     <div class="stack">
-      <h1>{t('admin.feedback.title')}</h1>
+      <div class="heading-row">
+        <h1>{t('admin.feedback.title')}</h1>
+        {data && !isInsufficient(data) ? (
+          <SpeakButton
+            text={t('admin.speech.feedback', {
+              safety: oneDecimal(data.averages.safety),
+              fairness: oneDecimal(data.averages.fairness),
+              respect: oneDecimal(data.averages.respect),
+              workload: oneDecimal(data.averages.workload),
+            })}
+          />
+        ) : null}
+      </div>
       <p class="muted">{t('admin.feedback.anonymous')}</p>
 
       {feedback.loading && !data ? <Spinner /> : null}
