@@ -33,6 +33,18 @@ export type WriteOp = ['set', string, string] | ['hset', string, string, string]
 /** Upstash accepts large pipelines, but smaller chunks keep each request well under its body limit. */
 const PIPELINE_CHUNK = 200;
 
+/**
+ * With automatic deserialisation off, Upstash returns HGETALL as Redis does: a flat
+ * [field, value, field, value, ...] array. Accept that, an object, or null.
+ */
+export function hashToRecord(raw: unknown): Record<string, string> {
+  if (!raw) return {};
+  if (!Array.isArray(raw)) return raw as Record<string, string>;
+  const out: Record<string, string> = {};
+  for (let i = 0; i + 1 < raw.length; i += 2) out[String(raw[i])] = String(raw[i + 1]);
+  return out;
+}
+
 /** Upstash REST client (serverless-safe, works on Vercel and Cloud Run). */
 export function createUpstashKv(url: string, token: string): KvClient {
   // Raw strings in and out: the store does its own JSON, so the client must not parse or rewrite values.
@@ -42,7 +54,7 @@ export function createUpstashKv(url: string, token: string): KvClient {
     set: (key, value) => redis.set(key, value),
     setnx: async (key, value) => Number(await redis.setnx(key, value)),
     hset: (key, field, value) => redis.hset(key, { [field]: value }),
-    hgetall: async (key) => ((await redis.hgetall(key)) as Record<string, string> | null) ?? {},
+    hgetall: async (key) => hashToRecord(await redis.hgetall(key)),
     sadd: async (key, member) => Number(await redis.sadd(key, member)),
     smembers: async (key) => (await redis.smembers(key)) as string[],
     async writeMany(ops) {

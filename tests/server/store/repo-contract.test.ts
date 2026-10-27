@@ -3,7 +3,7 @@ import type { FeedbackResponse, PassportEntry, Report, Shift, Site, Worker } fro
 import { createFirestoreRepo } from '../../../src/server/store/firestore';
 import { createMemoryRepo } from '../../../src/server/store/memory';
 import type { Repo } from '../../../src/server/store/repo';
-import { bufferWrites, createRedisRepo, type WriteOp } from '../../../src/server/store/redis';
+import { bufferWrites, createRedisRepo, hashToRecord, type WriteOp } from '../../../src/server/store/redis';
 import { seedDemo } from '../../../src/server/store/seed';
 import { createFakeFirestore } from './fake-firestore';
 import { createFakeKv } from './fake-kv';
@@ -148,6 +148,13 @@ describe.each(backends)('repo contract: $name', ({ make }) => {
 });
 
 describe('redis store specifics', () => {
+  it('reads Upstash raw HGETALL arrays as field/value records', () => {
+    expect(hashToRecord(['a', '{"x":1}', 'b', '2'])).toEqual({ a: '{"x":1}', b: '2' });
+    expect(hashToRecord({ a: '1' })).toEqual({ a: '1' });
+    expect(hashToRecord(null)).toEqual({});
+    expect(hashToRecord([])).toEqual({});
+  });
+
   it('records the seed only when marked', async () => {
     const repo = createRedisRepo(createFakeKv());
     expect(await repo.isSeeded()).toBe(false);
