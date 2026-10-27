@@ -333,8 +333,8 @@ function SendingProgress() {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const started = Date.now();
-    const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
-    return () => window.clearInterval(timer);
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 500);
+    return () => clearInterval(timer);
   }, []);
   const key = [...PROGRESS_STEPS].reverse().find((s) => elapsed >= s.after)?.key ?? 'report.progress.sending';
   return (

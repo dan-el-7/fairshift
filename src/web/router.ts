@@ -38,9 +38,12 @@ export function useRoute(): Route {
         const same = next.path === prev.path && next.query.toString() === prev.query.toString();
         return same ? prev : next;
       });
-    window.addEventListener('hashchange', sync);
+    // Captured once: Preact may run this cleanup on a timer after unmount, when (in tests) the
+    // global window can already be gone.
+    const win = window;
+    win.addEventListener('hashchange', sync);
     sync();
-    return () => window.removeEventListener('hashchange', sync);
+    return () => win.removeEventListener('hashchange', sync);
   }, []);
   return route;
 }

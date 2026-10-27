@@ -67,8 +67,10 @@ function useWindowKeydown(handler: (event: KeyboardEvent) => void): void {
   ref.current = handler;
   useEffect(() => {
     const listener = (event: KeyboardEvent) => ref.current(event);
-    window.addEventListener('keydown', listener);
-    return () => window.removeEventListener('keydown', listener);
+    // Captured once, so a cleanup that runs after teardown never looks up a missing global window.
+    const win = window;
+    win.addEventListener('keydown', listener);
+    return () => win.removeEventListener('keydown', listener);
   }, []);
 }
 
@@ -79,14 +81,14 @@ function useGreeting(reduce: boolean, step: Step) {
   const greetRef = useRef(0);
   useEffect(() => {
     if (reduce || step !== 'hello') return undefined;
-    const id = window.setInterval(() => {
+    const id = setInterval(() => {
       const prev = greetRef.current;
       const next = (prev + 1) % ORDER.length;
       greetRef.current = next;
       setGreetPrev(prev);
       setGreet(next);
     }, GREET_MS);
-    return () => window.clearInterval(id);
+    return () => clearInterval(id);
   }, [reduce, step]);
   return { greet, greetPrev };
 }
