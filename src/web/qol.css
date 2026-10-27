@@ -171,7 +171,8 @@ html.text-lg {
 }
 
 .qol-lang-help + .qol-text-size {
-  margin-left: calc(-1 * var(--space-2, 8px) - 1px);
+  /* Cancel the bar's gap and overlap the shared 1px border. */
+  margin-left: calc(-1 * var(--actions-gap, 8px) - 1px);
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }

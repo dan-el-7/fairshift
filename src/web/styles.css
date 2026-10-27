@@ -394,7 +394,9 @@ a {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  /* Read by the segmented-control join in qol.css, so the overlap always equals the gap. */
+  --actions-gap: var(--space-2);
+  gap: var(--actions-gap);
   flex: none;
 }
 .lang-pill {
@@ -1994,7 +1996,7 @@ legend {
 /* Narrow phones: the header actions are icon-only round buttons, so the wordmark stays visible. */
 @media (max-width: 440px) {
   .header-actions {
-    gap: 2px;
+    --actions-gap: 4px;
   }
 }
 
