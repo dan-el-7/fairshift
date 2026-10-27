@@ -1126,11 +1126,11 @@ legend {
   gap: var(--space-2);
 }
 .shift-list li {
-  display: flex;
+  /* Date left and hours right always share the first line; badges sit under the date. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
+  gap: 6px var(--space-3);
   min-height: 56px;
   padding: var(--space-3) var(--space-4);
 }
@@ -1152,17 +1152,20 @@ legend {
   font-weight: 550;
 }
 .shift-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  justify-content: flex-end;
+  display: contents;
+}
+/* The hours: first line, right column, so every row's hours line up. */
+.shift-meta > span:not(.badge):not(.tag) {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* Badges sit before the hours, so the hours always end at the right edge in one aligned column. */
-.shift-meta .badge,
-.shift-meta .tag {
-  order: -1;
+/* Overtime and night badges: under the date, as a subtitle. */
+.shift-meta > .badge,
+.shift-meta > .tag {
+  grid-column: 1;
+  justify-self: start;
 }
 
 /* Pay: receipt style */
