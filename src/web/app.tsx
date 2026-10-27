@@ -2,11 +2,12 @@ import type { VNode } from 'preact';
 import { lazy, Suspense } from 'preact/compat';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Me } from '../shared/api';
+import type { Role } from '../shared/types';
 import { Icon } from './components/Icon';
 import { Spinner } from './components/Spinner';
 import { LanguageHelpButton } from './components/LanguageSheet';
 import { OfflineBanner } from './components/OfflineBanner';
-import { hasOnboarded, Onboarding } from './components/Onboarding';
+import { hasOnboarded, hasSeenIntro, Onboarding } from './components/Onboarding';
 import { TextSizeToggle } from './components/TextSizeToggle';
 import { adoptUserLanguage, t, useLang } from './i18n';
 import { navigate, type Route, useRoute } from './router';
@@ -77,8 +78,12 @@ export function App() {
   const mainRef = useRef<HTMLElement>(null);
   const root = route.path.split('/').filter(Boolean)[0];
 
-  const [onboarding, setOnboarding] = useState(() => !hasOnboarded());
-  const showOnboarding = onboarding || root === 'welcome';
+  // Overlay priority: #/welcome replay, then the first-visit flow, then a role intro after login. Only one shows at a time.
+  const welcome = root === 'welcome';
+  const [firstVisit, setFirstVisit] = useState(() => !hasOnboarded());
+  const [introDismissed, setIntroDismissed] = useState<Role | null>(null);
+  const introRole: Role | null =
+    !welcome && !firstVisit && me && me.role !== introDismissed && !hasSeenIntro(me.role) ? me.role : null;
 
   useEffect(() => {
     void ensureSession();
@@ -145,13 +150,20 @@ export function App() {
           ) : null}
         </div>
       </header>
-      {showOnboarding ? (
+      {welcome ? (
         <Onboarding
+          key="replay"
+          mode="replay"
+          role={me?.role ?? null}
           onDone={() => {
-            setOnboarding(false);
-            if (root === 'welcome') navigate('/');
+            setFirstVisit(false);
+            navigate('/');
           }}
         />
+      ) : firstVisit ? (
+        <Onboarding key="first" mode="first" onDone={() => setFirstVisit(false)} />
+      ) : introRole ? (
+        <Onboarding key={`intro-${introRole}`} mode="intro" role={introRole} onDone={() => setIntroDismissed(introRole)} />
       ) : null}
       <main id="main" ref={mainRef} tabIndex={-1} class={mainClass || undefined}>
         <OfflineBanner />

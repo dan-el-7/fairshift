@@ -1,4 +1,4 @@
-import { createPrivateKey, createPublicKey, randomBytes, type KeyObject } from 'node:crypto';
+import { createPrivateKey, createPublicKey, hkdfSync, randomBytes, type KeyObject } from 'node:crypto';
 import { generatePassportKeys } from './domain/passport';
 
 /** Ed25519 key pair used to sign and verify skill passports. */
@@ -16,11 +16,17 @@ export interface AppConfig {
   passport: PassportKeys;
 }
 
+export type StoreKind = 'memory' | 'firestore' | 'redis';
+
 /** Full process configuration read from the environment. */
 export interface ServerConfig extends AppConfig {
   port: number;
-  store: 'memory' | 'firestore';
-  /** Vertex AI is enabled when GOOGLE_CLOUD_PROJECT is set. */
+  store: StoreKind;
+  /** Upstash Redis REST endpoint, set when the redis store is selected. */
+  redis?: { url: string; token: string };
+  /** Gemini Developer API key (GEMINI_API_KEY or GOOGLE_API_KEY). Takes precedence over Vertex AI. */
+  geminiApiKey?: string;
+  /** Vertex AI is enabled when GOOGLE_CLOUD_PROJECT is set and no API key is. */
   googleProject?: string;
   googleLocation: string;
   geminiModel: string;
@@ -30,30 +36,62 @@ export interface ServerConfig extends AppConfig {
 
 type Env = Record<string, string | undefined>;
 
+const PASSPORT_SALT = 'fairshift';
+const PASSPORT_INFO = 'passport-ed25519';
+/** PKCS#8 DER prefix for an Ed25519 private key; the 32-byte seed follows it. */
+const ED25519_PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+
 /**
- * Reads server settings from the environment (see SPEC "Environment").
+ * Derives a stable Ed25519 passport key from SESSION_SECRET, so every instance of a
+ * multi-instance deployment (Vercel, Cloud Run) signs and verifies with the same key.
+ */
+export function derivePassportKeys(sessionSecret: string): PassportKeys {
+  const seed = Buffer.from(
+    hkdfSync('sha256', Buffer.from(sessionSecret, 'utf8'), Buffer.from(PASSPORT_SALT), Buffer.from(PASSPORT_INFO), 32),
+  );
+  const privateKey = createPrivateKey({
+    key: Buffer.concat([ED25519_PKCS8_PREFIX, seed]),
+    format: 'der',
+    type: 'pkcs8',
+  });
+  const publicKey = createPublicKey(privateKey);
+  return { privateKey, publicKey, publicPem: publicKey.export({ type: 'spki', format: 'pem' }).toString() };
+}
+
+/**
+ * Reads server settings from the environment (see README "Environment").
  * Never returns or logs secret values through any path other than the config object itself.
  */
 export function loadConfig(env: Env = process.env): ServerConfig {
   const port = parsePort(env.PORT);
-  const store = env.STORE === 'firestore' ? 'firestore' : parseStore(env.STORE);
 
   const providedSecret = env.SESSION_SECRET?.trim() ?? '';
   const secretGenerated = providedSecret.length === 0;
+  // Serverless and multi-instance platforms run several processes, each with its own random
+  // secret. Logins, QR codes and feedback dedupe would then fail at random, so refuse to start.
+  if (secretGenerated && (env.VERCEL || env.K_SERVICE)) {
+    throw new Error(
+      'SESSION_SECRET must be set on this platform (Vercel or Cloud Run): random per-instance secrets break logins. Generate one with `openssl rand -hex 32`.',
+    );
+  }
   const sessionSecret = secretGenerated ? randomBytes(32).toString('base64url') : providedSecret;
 
-  const project = env.GOOGLE_CLOUD_PROJECT?.trim();
+  const project = env.GOOGLE_CLOUD_PROJECT?.trim() || undefined;
+  const geminiApiKey = env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim() || undefined;
+  const store = parseStore(env);
 
   return {
     port,
     store,
+    redis: store === 'redis' ? parseRedis(env) : undefined,
     sessionSecret,
     secretGenerated,
     secureCookies: env.NODE_ENV === 'production',
-    googleProject: project && project.length > 0 ? project : undefined,
+    geminiApiKey,
+    googleProject: project,
     googleLocation: env.GOOGLE_CLOUD_LOCATION?.trim() || 'us-central1',
     geminiModel: env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash',
-    passport: loadPassportKeys(env.PASSPORT_PRIVATE_KEY),
+    passport: loadPassportKeys(env.PASSPORT_PRIVATE_KEY, secretGenerated ? undefined : sessionSecret),
   };
 }
 
@@ -66,15 +104,41 @@ function parsePort(raw: string | undefined): number {
   return port;
 }
 
-function parseStore(raw: string | undefined): 'memory' {
-  if (raw === undefined || raw.trim() === '' || raw === 'memory') return 'memory';
-  throw new Error('STORE must be "memory" or "firestore"');
+/**
+ * STORE wins when set. Otherwise a Redis REST endpoint (Vercel KV or Upstash names) selects
+ * Redis, and the default is the in-memory store.
+ */
+function parseStore(env: Env): StoreKind {
+  const raw = env.STORE?.trim() ?? '';
+  if (raw === 'firestore' || raw === 'redis' || raw === 'memory') return raw;
+  if (raw !== '') throw new Error('STORE must be "memory", "firestore" or "redis"');
+  return redisEndpoint(env) ? 'redis' : 'memory';
 }
 
-/** Uses PASSPORT_PRIVATE_KEY (Ed25519 PKCS8 PEM) when set, otherwise generates a key pair for this boot. */
-function loadPassportKeys(raw: string | undefined): PassportKeys {
-  const pem = raw?.trim().replace(/\\n/g, '\n') ?? '';
+function redisEndpoint(env: Env): { url: string; token: string } | undefined {
+  const url = (env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL)?.trim();
+  const token = (env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN)?.trim();
+  return url && token ? { url, token } : undefined;
+}
+
+function parseRedis(env: Env): { url: string; token: string } {
+  const endpoint = redisEndpoint(env);
+  if (!endpoint) {
+    throw new Error(
+      'STORE=redis needs KV_REST_API_URL and KV_REST_API_TOKEN (or UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN)',
+    );
+  }
+  return endpoint;
+}
+
+/**
+ * Uses PASSPORT_PRIVATE_KEY (Ed25519 PKCS8 PEM) when set. Otherwise derives a stable key from
+ * SESSION_SECRET when one is provided. With neither, generates a key pair for this boot.
+ */
+function loadPassportKeys(raw: string | undefined, sessionSecret: string | undefined): PassportKeys {
+  const pem = raw?.trim().replace(/\n/g, '\n') ?? '';
   if (pem.length === 0) {
+    if (sessionSecret !== undefined) return derivePassportKeys(sessionSecret);
     const generated = generatePassportKeys();
     return { privateKey: generated.privateKey, publicKey: generated.publicKey, publicPem: generated.publicPem };
   }

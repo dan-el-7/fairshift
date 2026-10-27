@@ -158,7 +158,7 @@ Folder map:
 - **Rate limits** (in memory, per client IP): 60 requests per minute on `/api/*`, and 10 per minute on `POST /api/reports` and `POST /api/feedback`. Over the limit returns 429 with `Retry-After`.
 - **Validation:** every request body and query is checked with zod. Bodies over 2 MB get 413.
 - **Roles:** admin routes require the admin role and are limited to the admin's own site. Worker routes require the worker role.
-- **No API keys.** Gemini on Vertex AI and Firestore use Application Default Credentials, which means the Cloud Run service account.
+- **No secrets in the repo.** Every secret (`SESSION_SECRET`, `GEMINI_API_KEY`, the Redis token) is read from the host's environment settings. On Cloud Run, Gemini on Vertex AI and Firestore need no key at all: they use the service account through Application Default Credentials.
 - **Secrets** come from environment variables or Secret Manager. `.env` files are git-ignored and `.env.example` contains only comments.
 - **Container:** multi-stage Dockerfile on `node:22-slim`, dev dependencies pruned, runs as the unprivileged `node` user.
 
@@ -166,7 +166,6 @@ Known limitations:
 
 - The rate limiter is per instance, so limits are approximate across several Cloud Run instances. It keys on the first `X-Forwarded-For` value, which a client can set, so it is not a substitute for a trusted proxy.
 - Skill-passport share tokens do not expire. They stay valid as long as the signing key does.
-- Without `PASSPORT_PRIVATE_KEY`, the signing key changes on every restart, so earlier passports stop verifying. Set the key for any real deployment.
 
 ## Try it
 
@@ -211,17 +210,33 @@ Environment variables (from `src/server/config.ts` and `.env.example`):
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `8080` | HTTP port. Cloud Run sets this. |
-| `SESSION_SECRET` | random per process | HMAC key for session JWTs, QR tokens and feedback dedupe keys. A random value means sessions and QR codes reset on restart. |
-| `STORE` | `memory` | `memory` or `firestore`. Any other value stops startup. |
-| `GOOGLE_CLOUD_PROJECT` | unset | When set, report triage uses Gemini on Vertex AI. Otherwise keyword triage is used. |
+| `SESSION_SECRET` | random per process (local only) | HMAC key for session JWTs, QR tokens, feedback dedupe keys and the passport signing key. **Required on Vercel and Cloud Run**: the server refuses to start without it. |
+| `STORE` | `redis` when a Redis endpoint is set, else `memory` | `memory`, `redis` or `firestore`. Any other value stops startup. |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | unset | Upstash Redis REST endpoint. Set automatically by the Vercel Marketplace integration. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | unset | Same endpoint under the Upstash names. Used when the `KV_` names are absent. |
+| `GEMINI_API_KEY` | unset | Gemini Developer API key from Google AI Studio (`GOOGLE_API_KEY` also accepted). When set, report triage uses Gemini. Takes precedence over Vertex AI. |
+| `GOOGLE_CLOUD_PROJECT` | unset | Without an API key, enables Gemini on Vertex AI (Application Default Credentials). Otherwise keyword triage is used. |
 | `GOOGLE_CLOUD_LOCATION` | `us-central1` | Vertex AI region. |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model ID. |
-| `PASSPORT_PRIVATE_KEY` | generated per process | Ed25519 private key in PKCS8 PEM. `\n` escapes are accepted. |
-| `NODE_ENV` | unset | `production` (set in the Dockerfile) makes the session cookie Secure. |
+| `PASSPORT_PRIVATE_KEY` | derived from `SESSION_SECRET` | Ed25519 private key in PKCS8 PEM (`\n` escapes accepted). When unset, a stable key is derived from `SESSION_SECRET` with HKDF-SHA256, so passports keep verifying across instances and restarts. |
+| `VERCEL`, `K_SERVICE` | set by the platform | Vercel and Cloud Run. Their presence makes a missing `SESSION_SECRET` a startup error. |
+| `NODE_ENV` | unset | `production` (set in the Dockerfile and on Vercel) makes the session cookie Secure. |
 
 To use Firestore locally, run `gcloud auth application-default login` and set `STORE=firestore` with `GOOGLE_CLOUD_PROJECT`.
 
-## Deploy to Cloud Run
+## Deploy to Vercel
+
+The app deploys to Vercel as a static site plus one Node function for `/api/*`. Build settings come from `vercel.json` (`npm run build:web` builds the SPA into `dist/web`; `api/[[...route]].ts` serves the API).
+
+1. Import this repository in Vercel (Add New, Project).
+2. In the project, open **Storage**, add **Upstash Redis** from the Vercel Marketplace and connect it to the project. This sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, and the data then persists in Redis. The demo organisation is seeded once, on the first request.
+3. Under **Settings, Environment Variables**, add `SESSION_SECRET`, for example the output of `openssl rand -hex 32`.
+4. Optional: add `GEMINI_API_KEY` from [Google AI Studio](https://aistudio.google.com/apikey) to enable Gemini triage. Without it, keyword triage is used.
+5. Deploy. Later pushes to the connected branch deploy automatically.
+
+Without Redis, each function instance keeps its own in-memory data, so reports and check-ins are lost between requests. Always connect a Redis store on Vercel.
+
+## Deploy to Cloud Run (alternative)
 
 The Dockerfile builds the image. Create the session secret first in Secret Manager (a long random string), then:
 
@@ -231,15 +246,17 @@ gcloud run deploy fairshift --source . --region asia-south1 --allow-unauthentica
   --set-secrets SESSION_SECRET=fairshift-session:latest
 ```
 
-The Cloud Run service account needs access to Firestore and Vertex AI, since both use Application Default Credentials. For a persistent passport signing key, store `PASSPORT_PRIVATE_KEY` in Secret Manager and add it with `--set-secrets` the same way.
+The Cloud Run service account needs access to Firestore and Vertex AI, since both use Application Default Credentials. For a persistent passport signing key, store `PASSPORT_PRIVATE_KEY` in Secret Manager and add it with `--set-secrets` the same way. To use Gemini through an API key instead, add `GEMINI_API_KEY` with `--set-secrets`.
 
 ## Testing
 
-- **263 tests in 26 files**, run with `npm test` (Vitest).
+- **333 tests in 29 files**, run with `npm test` (Vitest).
+- **Store** (`tests/server/store`): one contract suite runs against the memory repo, the Redis repo and the Firestore repo. The Redis and Firestore runs use in-memory fakes of their clients. The suite also checks that stored reports and feedback contain no worker id, and that the demo seed is claimed once.
+- **Services and config** (`tests/server/services`, `tests/server/config.test.ts`): Gemini answers (valid, redacted, unknown category mapped to `other`, errors, timeout and malformed JSON falling back to the heuristic), audio without AI, API key and Vertex client selection, the required `SESSION_SECRET` on Vercel and Cloud Run, the derived passport key, and store selection.
 - **Domain rules** (`tests/server/domain`): payroll arithmetic, attendance hours and night overlap, the four fatigue rules, quit-risk factors, QR token windows, anonymity (case codes, PII masking, feedback aggregation and dedupe key), passports (sign and verify), time and IST day buckets, and keyword triage.
 - **API** (`tests/server/api`): authentication and roles, check-in and check-out, pay, reports (including the anonymity guarantees and the 422 for audio without AI), feedback, passports, admin routes (including site scoping and the at-risk list), security headers (CSP and permissions policy), the 60 and 10 per-minute rate limits, and the 2 MB body limit.
 - **Web** (`tests/web`): the router, i18n (Hindi and Tamil have exactly the English keys, placeholders match, and every hazard category has a label), language persistence, Indian paise formatting, the landing, admin and payslip screens, and axe-core accessibility checks on the landing, worker home and payslip screens. The colour-contrast rule is turned off in that check.
-- **Not covered by automated tests:** the Gemini call path and the Firestore repository. They are written and wired in, but no test exercises them.
+- **Not covered by automated tests:** live calls to Upstash Redis, Firestore and Gemini. Those paths are exercised against fakes only, so the first real deploy is the first live check.
 - CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests and the build on every push and pull request.
 
 ## SDG 8 alignment

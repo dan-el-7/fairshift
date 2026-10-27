@@ -26,6 +26,9 @@ export interface ReportAI {
   analyse(input: AiAnalyseInput): Promise<AiAnalysis>;
 }
 
+/** The part of the Google GenAI SDK client this service uses. Tests pass a fake. */
+export type GenAiClient = Pick<GoogleGenAI, 'models'>;
+
 /** Raised when a voice report arrives but no AI service can transcribe it. */
 export class AudioUnavailableError extends Error {
   constructor() {
@@ -63,12 +66,13 @@ async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   }
 }
 
-function outputSchema(cfg: IndustryConfig): z.ZodType<AiAnalysis> {
+/** Validates model output. A category outside the industry's list becomes 'other'. */
+function outputSchema(cfg: IndustryConfig) {
   return z.object({
     text: z.string().max(8_000),
     textEn: z.string().max(8_000),
-    category: z.string().refine((c) => cfg.hazardCategories.includes(c), 'unknown category'),
-    severity: z.enum(['low', 'medium', 'high', 'critical']),
+    category: z.string().transform((c) => (cfg.hazardCategories.includes(c) ? c : 'other')),
+    severity: z.enum(SEVERITIES),
   });
 }
 
@@ -94,14 +98,12 @@ const SYSTEM_INSTRUCTION = [
   'Respond only with JSON matching the schema.',
 ].join(' ');
 
-/** Gemini on Vertex AI using the service account (ADC). Throws on any failure. */
-export function vertexAi(options: {
-  project: string;
-  location: string;
-  model: string;
-  client?: Pick<GoogleGenAI, 'models'>;
-}): ReportAI {
-  const client = options.client ?? new GoogleGenAI({ vertexai: true, project: options.project, location: options.location });
+/**
+ * Gemini through the given client (Developer API key or Vertex AI). Throws on any failure;
+ * the caller decides on the fallback. Never logs the report or the response.
+ */
+export function geminiAi(options: { client: GenAiClient; model: string }): ReportAI {
+  const { client } = options;
 
   return {
     async analyse(input) {
@@ -140,26 +142,40 @@ export function vertexAi(options: {
 }
 
 export interface AiOptions {
-  /** Set when Vertex AI should be used. Absent means heuristic only. */
+  /** Gemini Developer API key. Used first when set. */
+  geminiApiKey?: string;
+  /** Vertex AI project, used when no API key is set. */
   googleProject?: string;
   googleLocation?: string;
   geminiModel?: string;
+  /** Injected client (tests). When set, it replaces the client built from the keys above. */
+  client?: GenAiClient;
+}
+
+/** Builds the SDK client for the configured credentials, or null for heuristic-only. */
+function clientFor(options: AiOptions): GenAiClient | null {
+  if (options.geminiApiKey) return new GoogleGenAI({ apiKey: options.geminiApiKey });
+  if (options.googleProject) {
+    return new GoogleGenAI({
+      vertexai: true,
+      project: options.googleProject,
+      location: options.googleLocation ?? 'us-central1',
+    });
+  }
+  return null;
 }
 
 /**
- * Builds the report AI. With a project set, tries Gemini first and falls back to the heuristic
- * on any error or invalid output. Audio that cannot be transcribed raises AudioUnavailableError.
+ * Builds the report AI. With Gemini configured (API key, or Vertex AI project), tries Gemini
+ * first and falls back to the heuristic on any error, timeout or invalid output. Without it, or
+ * for audio that cannot be transcribed, the heuristic answers (audio raises AudioUnavailableError).
  */
 export function createReportAi(options: AiOptions): ReportAI {
   const fallback = heuristicAi();
-  if (!options.googleProject) return fallback;
+  const client = options.client ?? clientFor(options);
+  if (!client) return fallback;
 
-  const primary = vertexAi({
-    project: options.googleProject,
-    location: options.googleLocation ?? 'us-central1',
-    model: options.geminiModel ?? 'gemini-2.5-flash',
-  });
-
+  const primary = geminiAi({ client, model: options.geminiModel ?? 'gemini-2.5-flash' });
   return {
     async analyse(input) {
       try {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Language } from '../../shared/types';
+import type { Language, Role } from '../../shared/types';
 import { LANGUAGE_LABEL, setLang, useLang } from '../i18n';
 import { speak } from '../speech';
 import '../onboarding.css';
@@ -24,16 +24,38 @@ export function markOnboarded(): void {
   }
 }
 
+const introKey = (role: Role) => `fairshift.intro.${role}`;
+
+/** True when this role's intro slides were finished or skipped on this device. False when storage is blocked. */
+export function hasSeenIntro(role: Role): boolean {
+  try {
+    return window.localStorage.getItem(introKey(role)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Records that a role's intro is done. Never throws. */
+export function markIntroSeen(role: Role): void {
+  try {
+    window.localStorage.setItem(introKey(role), '1');
+  } catch {
+    // Storage blocked. The intro may show again; nothing else to do.
+  }
+}
+
 interface Slide {
   title: string;
   body: string;
 }
 
+type Slides = [Slide, Slide, Slide, Slide];
+
 interface Copy {
   greeting: string;
   tap: string;
   chooseTitle: string;
-  slides: [Slide, Slide, Slide];
+  roles: Record<Role, Slides>;
   next: string;
   back: string;
   skip: string;
@@ -49,15 +71,24 @@ const COPY: Record<Language, Copy> = {
     greeting: 'Hello',
     tap: 'Tap to begin',
     chooseTitle: 'Choose your language',
-    slides: [
-      { title: 'Fair pay you can see', body: 'Every rupee is explained, and overtime is counted automatically.' },
-      { title: 'Speak up safely', body: 'Report a problem by voice or text. Nobody can see who you are.' },
-      { title: 'Your skills travel with you', body: 'Get a verified record that any employer can check.' },
-    ],
+    roles: {
+      worker: [
+        { title: 'Check in with one tap', body: 'Scan the site QR or use your location. Your hours and overtime are counted for you.' },
+        { title: 'Your pay, explained', body: 'Every line shows the maths. Listen to it in your language.' },
+        { title: 'Speak up safely', body: 'Report by voice or text and get a case code. Nobody can see who you are.' },
+        { title: 'Your skills go with you', body: 'A verified record that any employer can check.' },
+      ],
+      admin: [
+        { title: 'Your site at a glance', body: 'Attendance, overtime and alerts on one dashboard.' },
+        { title: 'Act on reports fast', body: 'Sorted by severity, overdue ones first. Update the reporter by case code.' },
+        { title: 'Spot burnout early', body: 'Fatigue alerts and quit-risk, each with clear reasons. Anonymous reports are never used.' },
+        { title: 'QR kiosk check-in', body: "Show a rotating QR at the gate. It can't be screenshotted and reused." },
+      ],
+    },
     next: 'Next',
     back: 'Back',
     skip: 'Skip',
-    start: 'Get started',
+    start: "Let's go",
     listen: 'Listen',
     stepOf: 'Step {n} of {total}',
   },
@@ -65,15 +96,24 @@ const COPY: Record<Language, Copy> = {
     greeting: 'नमस्ते',
     tap: 'शुरू करने के लिए टैप करें',
     chooseTitle: 'अपनी भाषा चुनें',
-    slides: [
-      { title: 'उचित मज़दूरी, साफ़ हिसाब', body: 'हर रुपये का हिसाब दिखता है, और ओवरटाइम अपने-आप गिना जाता है।' },
-      { title: 'बेखौफ़ होकर बोलें', body: 'आवाज़ या लिखकर समस्या बताएँ। कोई नहीं देख सकता कि आप कौन हैं।' },
-      { title: 'आपका हुनर आपके साथ चलता है', body: 'एक सत्यापित रिकॉर्ड पाएँ, जिसे कोई भी नियोक्ता जाँच सकता है।' },
-    ],
+    roles: {
+      worker: [
+        { title: 'एक टैप में हाज़िरी लगाएँ', body: 'साइट का QR स्कैन करें या अपनी लोकेशन इस्तेमाल करें। आपके घंटे और ओवरटाइम अपने-आप गिने जाते हैं।' },
+        { title: 'आपकी मज़दूरी, साफ़ समझाई गई', body: 'हर लाइन में हिसाब दिखता है। अपनी भाषा में सुनें।' },
+        { title: 'बेखौफ़ होकर बोलें', body: 'आवाज़ या लिखकर रिपोर्ट करें और केस कोड पाएँ। कोई नहीं देख सकता कि आप कौन हैं।' },
+        { title: 'आपका हुनर आपके साथ चलता है', body: 'एक सत्यापित रिकॉर्ड, जिसे कोई भी नियोक्ता जाँच सकता है।' },
+      ],
+      admin: [
+        { title: 'आपकी साइट एक नज़र में', body: 'हाज़िरी, ओवरटाइम और अलर्ट एक ही डैशबोर्ड पर।' },
+        { title: 'रिपोर्ट पर तुरंत कार्रवाई', body: 'गंभीरता के हिसाब से छँटी हुई, पुरानी पेंडिंग पहले। केस कोड से रिपोर्टर को अपडेट करें।' },
+        { title: 'थकान के संकेत जल्दी पहचानें', body: 'थकान और नौकरी छोड़ने के जोखिम के अलर्ट, साफ़ कारणों के साथ। गुमनाम रिपोर्ट कभी इस्तेमाल नहीं होतीं।' },
+        { title: 'QR किऑस्क से हाज़िरी', body: 'गेट पर घूमता हुआ QR दिखाएँ। इसका स्क्रीनशॉट लेकर दोबारा इस्तेमाल नहीं हो सकता।' },
+      ],
+    },
     next: 'अगला',
     back: 'पीछे',
     skip: 'छोड़ें',
-    start: 'शुरू करें',
+    start: 'चलिए',
     listen: 'सुनें',
     stepOf: 'चरण {n} / {total}',
   },
@@ -81,24 +121,40 @@ const COPY: Record<Language, Copy> = {
     greeting: 'வணக்கம்',
     tap: 'தொடங்க தட்டவும்',
     chooseTitle: 'உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்',
-    slides: [
-      { title: 'நியாயமான ஊதியம், தெளிவான கணக்கு', body: 'ஒவ்வொரு ரூபாயின் கணக்கும் விளக்கப்படும்; கூடுதல் நேரம் தானாகக் கணக்கிடப்படும்.' },
-      { title: 'பாதுகாப்பாகக் குரல் கொடுங்கள்', body: 'குரல் அல்லது எழுத்து மூலம் பிரச்சினையைத் தெரிவியுங்கள். நீங்கள் யார் என்பது யாருக்கும் தெரியாது.' },
-      { title: 'உங்கள் திறன்கள் உங்களுடன் வரும்', body: 'எந்த முதலாளியும் சரிபார்க்கக்கூடிய உறுதிசெய்யப்பட்ட பதிவு கிடைக்கும்.' },
-    ],
+    roles: {
+      worker: [
+        { title: 'ஒரே தட்டலில் வருகை பதிவு', body: 'தள QR-ஐ ஸ்கேன் செய்யுங்கள் அல்லது இருப்பிடத்தைப் பயன்படுத்துங்கள். உங்கள் நேரமும் கூடுதல் நேரமும் உங்களுக்காகக் கணக்கிடப்படும்.' },
+        { title: 'உங்கள் ஊதியம், தெளிவாக', body: 'ஒவ்வொரு வரியிலும் கணக்கு காட்டப்படும். உங்கள் மொழியில் கேட்கலாம்.' },
+        { title: 'பாதுகாப்பாகக் குரல் கொடுங்கள்', body: 'குரல் அல்லது எழுத்து மூலம் புகார் தெரிவித்து வழக்குக் குறியீட்டைப் பெறுங்கள். நீங்கள் யார் என்பது யாருக்கும் தெரியாது.' },
+        { title: 'உங்கள் திறன்கள் உங்களுடன் வரும்', body: 'எந்த முதலாளியும் சரிபார்க்கக்கூடிய உறுதிசெய்யப்பட்ட பதிவு.' },
+      ],
+      admin: [
+        { title: 'உங்கள் தளம், ஒரு பார்வையில்', body: 'வருகை, கூடுதல் நேரம் மற்றும் எச்சரிக்கைகள் ஒரே டாஷ்போர்டில்.' },
+        { title: 'புகார்களுக்கு விரைவாகச் செயல்படுங்கள்', body: 'தீவிரத்தின்படி வரிசைப்படுத்தப்படும்; தாமதமானவை முதலில். வழக்குக் குறியீட்டின் மூலம் புகார்தாரருக்குத் தெரிவியுங்கள்.' },
+        { title: 'சோர்வை முன்கூட்டியே கண்டறியுங்கள்', body: 'சோர்வு மற்றும் வேலை விட்டுப் போகும் அபாய எச்சரிக்கைகள், தெளிவான காரணங்களுடன். அநாமதேய புகார்கள் ஒருபோதும் பயன்படுத்தப்படாது.' },
+        { title: 'QR கியோஸ்க் வருகைப் பதிவு', body: 'வாயிலில் சுழலும் QR-ஐக் காட்டுங்கள். இதை ஸ்கிரீன்ஷாட் எடுத்து மீண்டும் பயன்படுத்த முடியாது.' },
+      ],
+    },
     next: 'அடுத்து',
     back: 'பின்',
     skip: 'தவிர்',
-    start: 'தொடங்கு',
+    start: 'வாருங்கள்',
     listen: 'கேளுங்கள்',
     stepOf: 'படி {n} / {total}',
   },
 };
 
+type ArtKind = 'phone' | 'receipt' | 'bubble' | 'badge' | 'dashboard' | 'flag' | 'pulse' | 'qr';
+
+/** Illustration for each slide, in order. */
+const ART: Record<Role, [ArtKind, ArtKind, ArtKind, ArtKind]> = {
+  worker: ['phone', 'receipt', 'bubble', 'badge'],
+  admin: ['dashboard', 'flag', 'pulse', 'qr'],
+};
+
 /** Order in which the hello greetings cycle. */
 const ORDER: Language[] = ['en', 'hi', 'ta'];
 const SUBTITLE: Record<Language, string | null> = { en: null, hi: 'Hindi', ta: 'Tamil' };
-const SLIDE_COUNT = 3;
 const SWIPE_PX = 50;
 const GREET_MS = 2200;
 const CHOOSE_MS = 450;
@@ -111,6 +167,13 @@ const FOCUSABLE =
   'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type Step = 'hello' | 'language' | 'slides';
+
+/**
+ * first: Hello, language, then close (first visit, no slides).
+ * replay: Hello, language, then the role's slides when a role is given (#/welcome).
+ * intro: the role's slides only, starting at the first slide (after login).
+ */
+export type OnboardingMode = 'first' | 'replay' | 'intro';
 
 function prefersReducedMotion(): boolean {
   try {
@@ -161,44 +224,82 @@ function SpeakerIcon() {
   );
 }
 
-/** Line illustrations for the three slides: wallet, shield with sound waves, badge with check. */
-function SlideArt({ n }: { n: number }) {
+/** Line illustrations in the same style as the rest of the app. */
+function SlideArt({ kind }: { kind: ArtKind }) {
   return (
     <svg viewBox="0 0 48 48" width="64" height="64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      {n === 0 && (
+      {kind === 'phone' && (
         <g>
-          <rect x="6" y="13" width="34" height="25" rx="5" />
-          <path d="M6 22h34" />
-          <circle cx="33" cy="28" r="2.2" />
+          <rect x="14" y="5" width="20" height="38" rx="4" />
+          <path d="M21 37h6" />
+          <path d="m19.5 22 3 3 6-6" />
         </g>
       )}
-      {n === 1 && (
+      {kind === 'receipt' && (
         <g>
-          <path d="M20 6 32 10.5V21c0 10-5 16-12 19-7-3-12-9-12-19V10.5Z" />
-          <path d="M37 18q2.5 3.5 0 7" />
-          <path d="M41 15q4.5 6.5 0 13" />
+          <path d="M12 6h24v36l-4-3-4 3-4-3-4 3-4-3-4 3Z" />
+          <path d="M17 15h14M17 22h14M17 29h8" />
         </g>
       )}
-      {n === 2 && (
+      {kind === 'bubble' && (
+        <g>
+          <path d="M8 10h32v20H23l-8 7v-7H8Z" />
+          <circle cx="17" cy="20" r="1.6" fill="currentColor" />
+          <circle cx="24" cy="20" r="1.6" fill="currentColor" />
+          <circle cx="31" cy="20" r="1.6" fill="currentColor" />
+        </g>
+      )}
+      {kind === 'badge' && (
         <g>
           <circle cx="24" cy="20" r="11" />
           <path d="M17 29 15 43l9-4 9 4-2-14" />
           <path d="m19.5 20 3 3 6-6" />
         </g>
       )}
+      {kind === 'dashboard' && (
+        <g>
+          <rect x="6" y="8" width="36" height="32" rx="4" />
+          <path d="M14 33v-7M22 33v-12M30 33v-9" />
+        </g>
+      )}
+      {kind === 'flag' && (
+        <g>
+          <path d="M12 42V7" />
+          <path d="M12 8h22l-4 6 4 6H12" />
+        </g>
+      )}
+      {kind === 'pulse' && <path d="M5 26h9l4-9 5 16 4-11 3 4h13" />}
+      {kind === 'qr' && (
+        <g>
+          <rect x="7" y="7" width="15" height="15" rx="2" />
+          <rect x="26" y="7" width="15" height="15" rx="2" />
+          <rect x="7" y="26" width="15" height="15" rx="2" />
+          <path d="M27 27h4v4h-4zM35 27h6M27 35v6M35 35h2v6" />
+        </g>
+      )}
     </svg>
   );
 }
 
+export interface OnboardingProps {
+  onDone: () => void;
+  mode?: OnboardingMode;
+  /** Required for intro; optional for replay, where it adds the role's slides. */
+  role?: Role | null;
+}
+
 /**
- * First-run onboarding: a "Hello" greeting, a language choice, then three short slides.
- * Mount it when hasOnboarded() is false. onDone runs after the exit animation (or at once with reduced motion).
+ * Onboarding overlay. Mount it for the mode that applies; onDone runs after the exit animation
+ * (or at once with reduced motion). See OnboardingMode for each flow.
  */
-export function Onboarding({ onDone }: { onDone: () => void }) {
+export function Onboarding({ onDone, mode = 'first', role = null }: OnboardingProps) {
   const uiLang = useLang();
   const copy = COPY[uiLang];
+  const slideRole: Role | null = mode === 'first' ? null : role;
+  const slides: Slides | null = slideRole ? copy.roles[slideRole] : null;
+  const slideCount = slides ? slides.length : 0;
   const [reduce] = useState<boolean>(prefersReducedMotion);
-  const [step, setStep] = useState<Step>('hello');
+  const [step, setStep] = useState<Step>(mode === 'intro' && slideRole ? 'slides' : 'hello');
   const [picked, setPicked] = useState<Language | null>(navigatorLanguage);
   const [pressed, setPressed] = useState<Language | null>(null);
   const [index, setIndex] = useState(0);
@@ -216,9 +317,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const swipeRef = useRef<number | null>(null);
   const keyRef = useRef<(event: KeyboardEvent) => void>(() => undefined);
 
-  const slideLang: Language = picked ?? 'en';
-  const slideCopy = COPY[slideLang];
-
   const later = (fn: () => void, ms: number) => {
     timersRef.current.push(window.setTimeout(fn, ms));
   };
@@ -230,11 +328,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     };
   }, []);
 
-  /** Every way out (Skip, Esc, Get started) records onboarding, then fades out before onDone. */
+  /** Every way out (Skip, Esc, Let's go, or the end of the flow) records onboarding and any role intro, then fades out. */
   const complete = () => {
     if (exitingRef.current) return;
     exitingRef.current = true;
     markOnboarded();
+    if (slideRole) markIntroSeen(slideRole);
     setExiting(true);
     later(() => onDone(), reduce ? 0 : EXIT_MS);
   };
@@ -247,15 +346,19 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     setPressed(lang);
     later(() => {
       setPressed(null);
-      setDir(1);
-      setIndex(0);
-      setStep('slides');
       busyRef.current = false;
+      if (slideRole) {
+        setDir(1);
+        setIndex(0);
+        setStep('slides');
+      } else {
+        complete();
+      }
     }, CHOOSE_MS);
   };
 
   const goNext = () => {
-    if (index < SLIDE_COUNT - 1) {
+    if (index < slideCount - 1) {
       setDir(1);
       setIndex(index + 1);
     }
@@ -266,7 +369,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       setIndex(index - 1);
     }
   };
-  const primary = () => (index < SLIDE_COUNT - 1 ? goNext() : complete());
+  const primary = () => (index < slideCount - 1 ? goNext() : complete());
+  // The intro has no language step, so Back is hidden on its first slide.
+  const canBack = index > 0 || mode !== 'intro';
   const back = () => (index > 0 ? goPrev() : setStep('language'));
 
   // Keyboard handling sits on the window so it works wherever focus is. The ref keeps it on the latest render.
@@ -316,11 +421,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
   }, [step, index]);
 
-  const stepOf = slideCopy.stepOf.replace('{n}', String(index + 1)).replace('{total}', String(SLIDE_COUNT));
-  const slide: Slide = slideCopy.slides[index] ?? slideCopy.slides[0];
-  const arm = () => {
-    armedRef.current = true;
-  };
+  const stepOf = copy.stepOf.replace('{n}', String(index + 1)).replace('{total}', String(slideCount));
+  const slide: Slide | undefined = slides ? slides[index] ?? slides[0] : undefined;
+  const artKind: ArtKind | undefined = slideRole ? ART[slideRole][index] ?? ART[slideRole][0] : undefined;
 
   return (
     <div
@@ -329,7 +432,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby={TITLE_ID}
-      onPointerDown={arm}
+      onPointerDown={() => {
+        armedRef.current = true;
+      }}
     >
       <div class="ob-blobs" aria-hidden="true">
         <span class="ob-blob ob-blob-teal" />
@@ -420,7 +525,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           </div>
         )}
 
-        {step === 'slides' && (
+        {step === 'slides' && slides && slide && (
           <div
             class="ob-slides"
             onPointerDown={(e) => {
@@ -439,10 +544,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             }}
           >
             <div class="ob-slide-viewport">
-              <div key={index} lang={slideLang} class={`ob-slide${dir === -1 ? ' from-left' : ''}`}>
-                <div class="ob-art">
-                  <SlideArt n={index} />
-                </div>
+              <div key={`${slideRole}-${index}`} lang={uiLang} class={`ob-slide${dir === -1 ? ' from-left' : ''}`}>
+                <div class="ob-art">{artKind && <SlideArt kind={artKind} />}</div>
                 <h1 id={TITLE_ID} class="ob-slide-title">
                   {slide.title}
                 </h1>
@@ -451,24 +554,22 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             </div>
 
             <div class="ob-dots" role="img" aria-label={stepOf}>
-              {[0, 1, 2].map((i) => (
+              {slides.map((_, i) => (
                 <span key={i} class={`ob-dot${i === index ? ' is-on' : ''}`} />
               ))}
             </div>
 
             <div class="ob-actions">
-              <button type="button" class="ob-btn ob-btn-quiet" onClick={back}>
-                {slideCopy.back}
-              </button>
-              <button
-                type="button"
-                class="ob-btn ob-btn-quiet"
-                onClick={() => speak(`${slide.title}. ${slide.body}`, slideLang)}
-              >
-                {slideCopy.listen}
+              {canBack && (
+                <button type="button" class="ob-btn ob-btn-quiet" onClick={back}>
+                  {copy.back}
+                </button>
+              )}
+              <button type="button" class="ob-btn ob-btn-quiet" onClick={() => speak(`${slide.title}. ${slide.body}`, uiLang)}>
+                {copy.listen}
               </button>
               <button type="button" class="ob-btn ob-btn-primary" data-autofocus="" onClick={primary}>
-                {index < SLIDE_COUNT - 1 ? slideCopy.next : slideCopy.start}
+                {index < slideCount - 1 ? copy.next : copy.start}
               </button>
             </div>
           </div>
