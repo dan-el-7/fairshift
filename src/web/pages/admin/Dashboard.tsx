@@ -6,6 +6,7 @@ import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { t, type TKey } from '../../i18n';
 import { LIVE_REFRESH_MS, useApiData } from '../../useApiData';
+import { RiskCell } from './RiskCell';
 import { SEVERITIES } from './shared';
 
 type Series = AdminOverview['attendance14d'];
@@ -94,10 +95,7 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
               <th scope="row">{worker.name}</th>
               <td>{worker.jobTitle}</td>
               <td>
-                <div class="stack-tight">
-                  <span class="risk-score">{t('admin.riskScore', { score: worker.quitRisk.score })}</span>
-                  <span class={`badge badge-${worker.quitRisk.level}`}>{t(`risk.level.${worker.quitRisk.level}` as TKey)}</span>
-                </div>
+                <RiskCell level={worker.quitRisk.level} score={worker.quitRisk.score} />
               </td>
               <td>
                 <ul class="tag-list">

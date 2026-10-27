@@ -674,9 +674,27 @@ main.has-bottom-nav {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.risk-score {
+.risk-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   white-space: nowrap;
+}
+/* Fixed width, centred: Low, Medium and High line up in one column. */
+.risk-badge {
+  justify-content: center;
+  min-width: 4.75em;
+}
+.risk-score {
   font-variant-numeric: tabular-nums;
+}
+.risk-score strong {
+  font-weight: 600;
+}
+.risk-of {
+  margin-left: 2px;
+  color: var(--muted);
+  font-size: 0.875em;
 }
 .tag-list {
   list-style: none;

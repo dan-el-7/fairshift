@@ -6,6 +6,7 @@ import { Banner } from '../../components/Banner';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { Spinner } from '../../components/Spinner';
 import { t, type TKey } from '../../i18n';
+import { RiskCell } from './RiskCell';
 import { useApiData } from '../../useApiData';
 
 const KINDS: PassportKind[] = ['training', 'certification', 'experience'];
@@ -138,8 +139,7 @@ export default function Workers() {
                     <td class="num">{t('common.hours', { hours: worker.overtime14d })}</td>
                     <td class="num">{worker.fatigue.length}</td>
                     <td>
-                      <span class={`badge badge-${worker.quitRisk.level}`}>{t(`risk.level.${worker.quitRisk.level}` as TKey)}</span>{' '}
-                      <span>{t('admin.riskScore', { score: worker.quitRisk.score })}</span>
+                      <RiskCell level={worker.quitRisk.level} score={worker.quitRisk.score} />
                     </td>
                   </tr>
                 ))}
