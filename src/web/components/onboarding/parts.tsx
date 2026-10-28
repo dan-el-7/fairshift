@@ -100,7 +100,20 @@ export function HelloStep({ flow }: { flow: OnboardingFlow }) {
               lang={l}
               class={`ob-greet-item${i === flow.greet ? ' is-in' : i === flow.greetPrev ? ' is-out' : ''}`}
             >
-              <span class="ob-greet">{COPY[l].greeting}</span>
+              {/* The word writes itself: an ink outline traces each glyph, then it fills in. SVG text
+                  follows the real font outlines, so Devanagari and Tamil draw correctly too. */}
+              <svg class="ob-greet" focusable="false">
+                <defs>
+                  <linearGradient id={`ob-ink-${l}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" class="ob-ink-a" />
+                    <stop offset="55%" class="ob-ink-b" />
+                    <stop offset="100%" class="ob-ink-c" />
+                  </linearGradient>
+                </defs>
+                <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" stroke={`url(#ob-ink-${l})`}>
+                  {COPY[l].greeting}
+                </text>
+              </svg>
               <span class="ob-tap">{COPY[l].tap}</span>
             </span>
           ))}

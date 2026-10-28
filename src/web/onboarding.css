@@ -16,6 +16,12 @@
   --ob-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0));
   --ob-focus: #2563eb;
 
+  --ob-ink-a: #4f46e5;
+  --ob-ink-b: #7c3aed;
+  --ob-ink-c: #0ea5e9;
+  --ob-glow: rgba(99, 102, 241, 0.28);
+  --ob-glow-rest: rgba(99, 102, 241, 0.1);
+
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -37,7 +43,12 @@
     --ob-tint: rgba(139, 143, 249, 0.14);
     --ob-accent: #a5a8ff;
     --ob-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
-  }
+      --ob-ink-a: #c7c9ff;
+    --ob-ink-b: #a78bfa;
+    --ob-ink-c: #7dd3fc;
+    --ob-glow: rgba(165, 168, 255, 0.55);
+    --ob-glow-rest: rgba(165, 168, 255, 0.18);
+}
 }
 
 :root[data-theme='dark'] .ob-root {
@@ -50,6 +61,11 @@
   --ob-tint: rgba(139, 143, 249, 0.14);
   --ob-accent: #a5a8ff;
   --ob-frost: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+  --ob-ink-a: #c7c9ff;
+  --ob-ink-b: #a78bfa;
+  --ob-ink-c: #7dd3fc;
+  --ob-glow: rgba(165, 168, 255, 0.55);
+  --ob-glow-rest: rgba(165, 168, 255, 0.18);
 }
 
 .ob-root.is-exiting {
@@ -248,30 +264,71 @@
   align-items: center;
   gap: 16px;
   opacity: 0;
-  filter: blur(10px);
-  transform: translateY(8px);
 }
 
-.ob-greet-item.is-in {
-  animation: ob-greet-in 600ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
-}
-
-.ob-greet-item.is-out {
-  animation: ob-greet-out 600ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
-}
-
+/* The word: SVG text, sized like a display headline. */
 .ob-greet {
+  display: block;
+  width: min(92vw, 720px);
+  height: 1.5em;
+  overflow: visible;
   font-size: clamp(3rem, 12vw, 6rem);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  color: var(--ob-text);
-  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.ob-greet text {
+  fill: var(--ob-text);
+  fill-opacity: 0;
+  stroke-width: 1.4px;
+  stroke-linejoin: round;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  paint-order: stroke;
+}
+.ob-ink-a {
+  stop-color: var(--ob-ink-a);
+}
+.ob-ink-b {
+  stop-color: var(--ob-ink-b);
+}
+.ob-ink-c {
+  stop-color: var(--ob-ink-c);
 }
 
 .ob-tap {
   font-size: 1.125rem;
   color: var(--ob-muted);
+  opacity: 0;
+}
+
+/* In: the item sharpens from a blur and settles from a slight zoom while the glow blooms; the ink
+   traces the outline, then the fill comes up and the stroke fades back; the tap hint follows. */
+.ob-greet-item.is-in {
+  animation: ob-greet-in 1100ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ob-greet-item.is-in .ob-greet {
+  animation: ob-greet-glow 2200ms ease-out forwards;
+}
+.ob-greet-item.is-in .ob-greet text {
+  animation:
+    ob-ink-draw 1500ms cubic-bezier(0.65, 0, 0.35, 1) forwards,
+    ob-ink-fill 1700ms ease forwards;
+}
+.ob-greet-item.is-in .ob-tap {
+  animation: ob-tap-in 500ms ease 1200ms forwards;
+}
+
+/* Out: dissolves into blur and drifts up while the next word starts writing. */
+.ob-greet-item.is-out {
+  animation: ob-greet-out 650ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+.ob-greet-item.is-out .ob-greet text {
+  stroke-dashoffset: 0;
+  fill-opacity: 1;
+  stroke-opacity: 0.25;
+}
+.ob-greet-item.is-out .ob-tap {
+  opacity: 1;
 }
 
 /* Reduced motion, or prefers static: all three greetings stacked, no animation. */
@@ -292,16 +349,27 @@
   font-size: clamp(2rem, 8vw, 3.5rem);
 }
 
+.ob-greet-stack.is-static .ob-greet text {
+  fill-opacity: 1;
+  stroke-dashoffset: 0;
+  stroke-opacity: 0;
+  animation: none;
+}
+
+.ob-greet-stack.is-static .ob-tap {
+  opacity: 1;
+}
+
 @keyframes ob-greet-in {
   from {
     opacity: 0;
-    filter: blur(10px);
-    transform: translateY(8px);
+    filter: blur(14px);
+    transform: scale(1.06);
   }
   to {
     opacity: 1;
     filter: blur(0);
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
@@ -309,12 +377,48 @@
   from {
     opacity: 1;
     filter: blur(0);
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
   to {
     opacity: 0;
-    filter: blur(10px);
-    transform: translateY(-8px);
+    filter: blur(16px);
+    transform: translateY(-10px) scale(0.97);
+  }
+}
+
+@keyframes ob-ink-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ob-ink-fill {
+  0%,
+  50% {
+    fill-opacity: 0;
+    stroke-opacity: 1;
+  }
+  100% {
+    fill-opacity: 1;
+    stroke-opacity: 0.25;
+  }
+}
+
+@keyframes ob-greet-glow {
+  0% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  55% {
+    filter: drop-shadow(0 0 22px var(--ob-glow));
+  }
+  100% {
+    filter: drop-shadow(0 0 10px var(--ob-glow-rest));
+  }
+}
+
+@keyframes ob-tap-in {
+  to {
+    opacity: 1;
   }
 }
 
