@@ -3,9 +3,6 @@ import { App } from './app';
 import { applySavedTextSize } from './components/TextSizeToggle';
 import { applyTheme, savedTheme } from './theme';
 import '@fontsource-variable/inter';
-// Static Inter semibold (Latin) for the onboarding greeting: its glyphs have merged outlines, so the
-// traced ink shows no overlapping contours (the variable font's 'e' does). Loaded only when used.
-import '@fontsource/inter/latin-600.css';
 import './styles.css';
 import './qol.css';
 
