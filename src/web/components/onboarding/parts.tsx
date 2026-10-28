@@ -2,6 +2,7 @@ import type { Language, Role } from '../../../shared/types';
 import { LANGUAGE_LABEL } from '../../i18n';
 import { speak } from '../../speech';
 import type { OnboardingFlow } from './flow';
+import { HELLO_PATH, HELLO_VIEWBOX } from './helloPath';
 import { ART, COPY, HELLO_LABEL, ORDER, SUBTITLE, TAP_ID, TAP_LABEL, TITLE_ID, type ArtKind, type Copy, type Slides } from './content';
 
 function SpeakerIcon() {
@@ -102,7 +103,11 @@ export function HelloStep({ flow }: { flow: OnboardingFlow }) {
             >
               {/* The word writes itself: an ink outline traces each glyph, then it fills in. SVG text
                   follows the real font outlines, so Devanagari and Tamil draw correctly too. */}
-              <svg class="ob-greet" focusable="false">
+              <svg
+                class="ob-greet"
+                focusable="false"
+                {...(l === 'en' ? { viewBox: HELLO_VIEWBOX, preserveAspectRatio: 'xMidYMid meet' } : {})}
+              >
                 <defs>
                   <linearGradient id={`ob-ink-${l}`} x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" class="ob-ink-a" />
@@ -110,9 +115,15 @@ export function HelloStep({ flow }: { flow: OnboardingFlow }) {
                     <stop offset="100%" class="ob-ink-c" />
                   </linearGradient>
                 </defs>
-                <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" stroke={`url(#ob-ink-${l})`}>
-                  {COPY[l].greeting}
-                </text>
+                {l === 'en' ? (
+                  // English uses a pre-merged outline (Inter's own "e" has overlapping contours that
+                  // tracing would show). pathLength matches the dash length the CSS animates.
+                  <path d={HELLO_PATH} pathLength={900} stroke={`url(#ob-ink-${l})`} />
+                ) : (
+                  <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" stroke={`url(#ob-ink-${l})`}>
+                    {COPY[l].greeting}
+                  </text>
+                )}
               </svg>
               <span class="ob-tap">{COPY[l].tap}</span>
             </span>
