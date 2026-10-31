@@ -1,0 +1,76 @@
+.language-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: .9rem;
+  line-height: 1.65;
+  font-weight: 400;
+}
+.language-options { display: grid; gap: 10px; width: 100%; }
+.language-option {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+}
+.language-option.is-selected { border-color: var(--primary); background: var(--primary-soft); }
+.language-option-select {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 80px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.language-option-select input[type='radio'] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--primary);
+}
+.language-option-name { display: grid; min-width: 0; gap: 1px; }
+.language-option-name strong { font-size: 1.25rem; font-weight: 600; line-height: 1.5; }
+.language-option-name small { color: var(--muted); font-size: .8125rem; line-height: 1.4; }
+.language-listen {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 10px 0 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.language-listen:hover { color: var(--text); background: var(--icon-bg); border-color: var(--hover-border); }
+.language-later { margin: 0; color: var(--muted); font-size: .8125rem; line-height: 1.6; text-align: center; }
+.qol-dialog.language-dialog { max-width: 440px; padding: 24px; border: 1px solid var(--glass-border); border-radius: 22px; }
+.language-dialog .qol-dialog-head { gap: 12px; align-items: start; margin-bottom: 22px; }
+.language-dialog .qol-dialog-title { margin: 0 0 8px; font-size: 1.5rem; line-height: 1.35; font-weight: 650; letter-spacing: -.025em; }
+.language-dialog .qol-close { flex: 0 0 44px; width: 44px; height: 44px; border-width: 1px; border-radius: 10px; }
+.language-dialog-footer { display: flex; margin-top: 22px; }
+.language-dialog-footer .btn { min-width: 0; }
+.language-dialog-footer .btn-primary { flex: 1; }
+.language-dialog-footer .btn-primary, .ob-lang .ob-language-continue { line-height: 1.45; }
+.language-dialog .language-later { margin-top: 14px; }
+@media (max-width: 360px) {
+  .qol-dialog.language-dialog { padding: 18px; }
+  .language-option-select { padding-inline: 12px; gap: 10px; }
+  .language-listen { margin-right: 6px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .language-option { transition: border-color 160ms ease, background-color 160ms ease; }
+}

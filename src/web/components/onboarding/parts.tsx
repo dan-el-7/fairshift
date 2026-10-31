@@ -1,19 +1,12 @@
 import type { Language, Role } from '../../../shared/types';
-import { LANGUAGE_LABEL } from '../../i18n';
+import { useState } from 'preact/hooks';
+import { getLang, tIn } from '../../i18n';
+import { LanguageChoices, LanguageHints } from '../LanguageChoices';
+import { Icon } from '../Icon';
 import { speak } from '../../speech';
 import type { OnboardingFlow } from './flow';
 import { HELLO_PATH, HELLO_VIEWBOX } from './helloPath';
-import { ART, COPY, HELLO_LABEL, ORDER, SUBTITLE, TAP_ID, TAP_LABEL, TITLE_ID, type ArtKind, type Copy, type Slides } from './content';
-
-function SpeakerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      <path d="M11 5 6 9H3v6h3l5 4z" />
-      <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-      <path d="M18.5 5.5a9 9 0 0 1 0 13" />
-    </svg>
-  );
-}
+import { ART, COPY, HELLO_LABEL, ORDER, TAP_ID, TAP_LABEL, TITLE_ID, type ArtKind, type Copy, type Slides } from './content';
 
 /** Line illustrations in the same style as the rest of the app. */
 function SlideArt({ kind }: { kind: ArtKind }) {
@@ -135,45 +128,21 @@ export function HelloStep({ flow }: { flow: OnboardingFlow }) {
 }
 
 /** Language picker: one card per language, each with a button that reads the name aloud. */
-export function LanguageStep({ flow, copy }: StepProps) {
+export function LanguageStep({ flow }: { flow: OnboardingFlow }) {
+  const [headingLanguage] = useState(getLang);
+  const language = flow.picked ?? getLang();
   return (
-    <div class="ob-lang">
-      <h1 id={TITLE_ID} class="ob-lang-title">
-        {ORDER.map((l) => (
-          <span key={l} lang={l} class="ob-title-line">
-            {COPY[l].chooseTitle}
-          </span>
-        ))}
-      </h1>
-      <div class="ob-cards">
-        {ORDER.map((l) => (
-          <div key={l} class={`ob-card${flow.picked === l ? ' is-selected' : ''}${flow.pressed === l ? ' is-pressed' : ''}`}>
-            <button
-              type="button"
-              class="ob-card-main"
-              lang={l}
-              data-autofocus={(flow.picked ?? 'en') === l ? '' : undefined}
-              onClick={() => flow.choose(l)}
-              onMouseEnter={() => speak(LANGUAGE_LABEL[l], l)}
-              onFocus={() => {
-                if (flow.armedRef.current) speak(LANGUAGE_LABEL[l], l);
-              }}
-            >
-              <span class="ob-card-name">{LANGUAGE_LABEL[l]}</span>
-              {SUBTITLE[l] && <span class="ob-card-sub">{SUBTITLE[l]}</span>}
-            </button>
-            <button
-              type="button"
-              class="ob-card-speak"
-              aria-label={`${copy.listen}: ${LANGUAGE_LABEL[l]}`}
-              onClick={() => speak(LANGUAGE_LABEL[l], l)}
-            >
-              <SpeakerIcon />
-            </button>
-          </div>
-        ))}
+    <form class="ob-lang language-panel" onSubmit={(event) => { event.preventDefault(); flow.confirmLanguage(); }}>
+      <div class="ob-language-heading">
+        <h1 id={TITLE_ID} lang={headingLanguage}>{tIn(headingLanguage, 'language.title')}</h1>
+        <LanguageHints language={headingLanguage} />
       </div>
-    </div>
+      <LanguageChoices value={language} onChange={flow.choose} name="onboarding-language" />
+      <button type="submit" class="btn btn-primary ob-language-continue" lang={language}>
+        <span>{tIn(language, 'language.continue')}</span><Icon name="chevron" size={20} />
+      </button>
+      <p class="language-later" lang={language}>{tIn(language, 'language.later')}</p>
+    </form>
   );
 }
 

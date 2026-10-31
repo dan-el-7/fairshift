@@ -112,6 +112,7 @@ export interface MethodPanelProps {
   codeRef: RefObject<HTMLInputElement | null>;
   onCheckIn: (body: CheckInRequest) => void;
   onCameraDenied: () => void;
+  onFallback: () => void;
   onLocate: () => void;
 }
 
@@ -126,6 +127,7 @@ export function MethodPanel({
   codeRef,
   onCheckIn,
   onCameraDenied,
+  onFallback,
   onLocate,
 }: MethodPanelProps) {
   if (mode === 'scan') {
@@ -143,6 +145,7 @@ export function MethodPanel({
         onFail={() => {
           setScanning(false);
           onCameraDenied();
+          onFallback();
         }}
       />
     );

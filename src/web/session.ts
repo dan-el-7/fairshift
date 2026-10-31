@@ -22,12 +22,13 @@ export function ensureSession(): Promise<Me | null> {
   if (me !== undefined) return Promise.resolve(me);
   pending ??= tryGet<Me>('/api/me')
     .then((loaded) => {
-      publish(loaded);
-      return loaded;
+      // A demo login or logout completed after this lookup began. Keep that newer session.
+      if (me === undefined) publish(loaded);
+      return me ?? null;
     })
     .catch(() => {
-      publish(null);
-      return null;
+      if (me === undefined) publish(null);
+      return me ?? null;
     })
     .finally(() => {
       pending = null;

@@ -8,6 +8,28 @@ FairShift is one web app for two kinds of employers. Workers check in, see exact
 
 Two industries ship in the box: **construction** (daily wages at a site gate) and **college** (monthly salaries for campus support staff). A new sector is one configuration object.
 
+## Screenshots
+
+The demo includes fictional campus and construction workers. The gallery shows the welcome flow, both themes, daily pay and the worker/admin reporting workflow. These are real viewport captures, arranged with presentation frames and captions.
+
+Inter, Noto Sans Devanagari and Noto Sans Tamil are bundled with the build, so the interface does not depend on installed fonts or a third-party font service. The low-resolution fluid backdrop respects reduced motion and pauses in hidden tabs.
+
+### Welcome and language flow
+
+![Multilingual welcome, language selection and worker introduction](docs/screenshots/welcome.jpg)
+
+### Light and dark themes
+
+![The same payslip in light and dark themes](docs/screenshots/themes.jpg)
+
+### Daily pay and calendar
+
+![Monthly calendar and selected-day pay calculation](docs/screenshots/calendar.jpg)
+
+### Worker and admin reporting
+
+![Worker report form alongside the admin case review](docs/screenshots/workflow.jpg)
+
 ## The problem
 
 - **Opaque pay.** Workers cannot check how a daily wage, overtime, a night allowance, a provident fund deduction or an advance was calculated.
@@ -20,11 +42,17 @@ Two industries ship in the box: **construction** (daily wages at a site gate) an
 | Feature | For workers | For employers |
 |---|---|---|
 | **Check-in with automatic overtime** | Scan the site QR at the gate, or check in by location if within the site radius. Overtime and night hours are calculated on check-out. | A kiosk page shows a rotating site QR (new code every 60 s, page refreshes every 30 s). Shift hours feed payroll and fatigue rules. |
-| **Transparent payslip** | Each line shows its arithmetic, for example "16 days × ₹750". Read-aloud is available. | The same line items are produced from the same rules for every worker. |
+| **Transparent payslip and calendar** | Each line shows its arithmetic, for example "16 days × ₹750". Select Calendar to inspect a date’s completed hours, overtime, night allowance and estimated take-home, with read-aloud in all three languages. Save the payslip through the browser’s Print / Save as PDF dialog, or share its text (copy fallback). | The same line items are produced from the same rules for every worker. Mark or remove site-wide days off under Workers → Site days off. These are schedule notices and never change pay or attendance. |
+| **Attendance and pay corrections** | From a calendar date, request corrected shift times, missing work or a signed net pay adjustment. Track the review and its reason. These requests identify the worker and are separate from anonymous reports. | Workers → Attendance & pay corrections provides approval/rejection with a required reason. Approved time changes recalculate attendance, pay and workforce figures; raw shifts and request history remain preserved. Competing reviews use version checks. |
+| **Pay comparison** | Expand the comparison with the previous month to see changes in base pay, overtime, night allowance, deductions and net adjustments, with audio. Current-month comparisons are labelled as partial versus a full month. | The comparison uses the same calculated payslips. Demo data includes a separate previous-month history. |
+| **Payment receipts and reconciliation** | Compare calculated net pay with the employer's recorded payments for the selected month. Confirm a receipt, report that it was not received, or state a different amount. The receipt and response remain visible. | Record dated payments with references and notes under Workers. Receipts are appended to a separate versioned ledger; the dashboard shows recorded payment gaps and worker disputes. Recording a payment does not transfer money or change payroll. |
+| **Upcoming days off** | Home shows the next three active own-site notices, including today, with localized dates and audio. | Existing site-day-off controls feed the Home card. |
 | **Anonymous safety reports** | Describe a problem by text or a voice note (up to 60 s), in English, Hindi or Tamil. Get a case code and track status without an account. | Reports come with a category, a severity and a service-level deadline. Overdue cases are flagged. Status changes and notes are visible to the reporter. |
+| **Reporter-confirmed fixes** | A new report includes a private response key, saved on the device when storage is available. After an employer reports a fix, use Track to confirm it or reopen the case, with an optional note. The public case code remains read-only. | The report history distinguishes employer updates and reporter responses. Concurrent changes are checked before saving. Older reports without a response key remain trackable. |
+| **Recurring site hazards** | Reports continue to be anonymous and contain no worker identity. | A 30-day dashboard summary shows a category only after at least three reports across two days. Old unresolved cases distinguish persistent hazards. Each card opens the category's queue. Counts are reports, not distinct workers, and sparse groups stay hidden. |
 | **Fatigue alerts** | See your own alerts for long shifts, short rests, long runs without a rest day and heavy weeks. | A fleet-wide fatigue list with the same rules. |
 | **Explainable quit-risk** | Not shown to workers. | A 0 to 100 score with its factors listed (see below). Never uses anonymous reports or feedback. |
-| **Skill passport** | See training, certification and experience entries, and share a signed link. | Add entries for each worker. Anyone can verify a passport with the platform's public key. |
+| **Skill passport** | See training, certification and experience entries, share a signed link, or Print / Save PDF with the worker’s name, entries, verification QR and link. | Add entries for each worker. Anyone can verify a passport with the platform's public key. |
 | **Anonymous feedback** | One response per month rating safety, fairness, respect and workload (1 to 5), with an optional comment. | Averages and comments appear only once a site has at least 5 responses. |
 
 **Fatigue rules** (look-back of 14 days of completed shifts):
@@ -61,6 +89,8 @@ Other rules:
 - Night hours (22:00 to 06:00 IST) earn an allowance per hour.
 - Monthly pay (college) is the salary minus each absent working day at salary / 26.
 - Advances for the period are shown as their own deduction line.
+
+The calendar is an estimate, not a daily payment ledger. It uses the daily wage or monthly salary / 26 for completed work. EPF and ESI are allocated by each day’s share of the monthly base/gross earnings; salary-balance deductions remain monthly. Salary balances, advances and rounding appear in a monthly adjustment so daily net estimates plus that adjustment equal the monthly payslip. Overnight work belongs to its IST check-in date, matching payroll. Open shifts do not accrue pay until check-out. Income tax is not calculated, and calculated pay does not confirm payment.
 
 ## Two industries, one platform
 
@@ -99,6 +129,7 @@ A new sector is added as one entry in `INDUSTRIES` in `src/shared/industries.ts`
 - **Audio is not stored.** A voice report is sent to Gemini for transcription within that request. The stored record holds text only.
 - **PII is masked before storage.** Emails, 12-digit Aadhaar-style numbers (4-4-4), and 10-digit Indian mobile numbers (with optional +91) are replaced with `[redacted]` in both the original and the English text. This is pattern-based, so it is a safeguard, not a guarantee. The Gemini prompt also asks the model to remove names.
 - **Case codes** are 8 random characters from an alphabet without 0, 1, I, L or O, shown as `XXXX-XXXX`.
+- **Private response keys** are separate from case codes. Only a SHA-256 hash is stored on the server; the key is returned once, kept out of URLs and administrator responses, and required to confirm or dispute a reported fix. Case tracking and status history remain available without the key.
 - **Feedback has no user ID.** The one-per-month check stores an HMAC of user, site and month in a separate set, never next to the response. Comments are redacted and shuffled.
 - **Small groups stay hidden.** Feedback aggregates are returned only at 5 or more responses. Below that, the API returns only a count.
 - **Quit-risk never reads reports or feedback.**
@@ -106,14 +137,14 @@ A new sector is added as one entry in `INDUSTRIES` in `src/shared/industries.ts`
 
 ## Accessibility and inclusion
 
-- **Languages.** The interface is available in English, Hindi and Tamil. Each language has 270 keys, and the picker shows native names (English, हिन्दी, தமிழ்). `<html lang>` follows the choice, which is remembered in localStorage.
+- **Languages.** The interface is available in English, Hindi and Tamil with matching translation keys. Onboarding and the header menu share native-name radio choices, explicit speaker previews and a separate Continue / Use action. Selection remains a draft until confirmed; cancelling keeps the current language. Audio never starts on hover or focus. `<html lang>` follows the confirmed choice, which is remembered in localStorage. Demo role introductions replay in the selected language.
 - **Read aloud.** A speaker button on primary actions reads text in en-IN, hi-IN or ta-IN through `speechSynthesis`. It does nothing if the browser has no speech support.
 - **Voice input.** Reports can be recorded (up to 60 s). A text box is always available.
 - **Icon-first, large targets.** Home screen tiles and buttons have a minimum height of 48 px.
 - **Keyboard and focus.** Visible `:focus-visible` outlines, a skip link, and `prefers-reduced-motion` respected.
-- **Contrast and dark mode.** Colours are defined as tokens, with a dark theme that follows the system setting. Contrast is designed for WCAG AA, but the automated check excludes the colour-contrast rule (see Testing).
+- **Contrast and dark mode.** New visitors start in dark mode. The footer remembers an explicit Light, Dark or Auto choice; Auto follows the system setting. Colours are defined as tokens. Contrast is designed for WCAG AA, but the automated check excludes the colour-contrast rule (see Testing).
 - **Works without AI or Google services.** Report triage falls back to keyword rules, and the app runs with an in-memory store.
-- **Small downloads.** Measured with `npm run build`: the entry JavaScript is about 29 kB gzipped, all 11 JavaScript chunks together about 50 kB gzipped, and CSS about 3 kB gzipped. The SPEC budget is 150 kB.
+- **Small downloads.** Worker pages and the admin area load as separate chunks. `npm run build` reports current compressed bundle sizes; the SPEC JavaScript budget is 150 kB.
 
 ## Architecture
 
@@ -191,7 +222,7 @@ Check-in needs the kiosk QR from the admin Kiosk page, scanned from a second dev
 
 ## Run locally
 
-Requires Node.js 20 or later (the Dockerfile uses 22).
+Requires Node.js 22.12 or later (the Dockerfile uses 22).
 
 ```bash
 npm ci
@@ -205,6 +236,8 @@ npm run check      # typecheck, lint and tests in one go
 ```
 
 Without any environment variables, the app uses the in-memory store, keyword triage and a random session secret. This is the setup the tests and the demo use.
+
+For local overrides, copy `.env.example` to `.env`, then uncomment and set the values you need. Both `npm start` and the API in `npm run dev` load `.env` if present. The Vite proxy follows the same `PORT` (8080 by default). Keep the file private.
 
 Environment variables (from `src/server/config.ts` and `.env.example`):
 
@@ -253,7 +286,7 @@ The Cloud Run service account needs access to Firestore and Vertex AI, since bot
 
 ## Testing
 
-- **382 tests in 36 files**, run with `npm test` (Vitest).
+- Run `npm test` for the complete Vitest suite; the command reports the current test and file counts.
 - **Store** (`tests/server/store`): one contract suite runs against the memory repo, the Redis repo and the Firestore repo. The Redis and Firestore runs use in-memory fakes of their clients. The suite also checks that stored reports and feedback contain no worker id, and that the demo seed is claimed once.
 - **Services and config** (`tests/server/services`, `tests/server/config.test.ts`): Gemini answers (valid, redacted, unknown category mapped to `other`, errors, timeout and malformed JSON falling back to the heuristic), audio without AI, API key and Vertex client selection, the required `SESSION_SECRET` on Vercel and Cloud Run, the derived passport key, and store selection.
 - **Domain rules** (`tests/server/domain`): payroll arithmetic, attendance hours and night overlap, the four fatigue rules, quit-risk factors, QR token windows, anonymity (case codes, PII masking, feedback aggregation and dedupe key), passports (sign and verify), time and IST day buckets, and keyword triage.

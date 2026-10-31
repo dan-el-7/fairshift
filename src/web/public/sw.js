@@ -1,5 +1,5 @@
 /* FairShift service worker. Bump VERSION when shipping changes that must reach offline users. */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const SHELL_CACHE = `fairshift-shell-${VERSION}`;
 const STATIC_CACHE = `fairshift-static-${VERSION}`;
 const KNOWN_CACHES = [SHELL_CACHE, STATIC_CACHE];

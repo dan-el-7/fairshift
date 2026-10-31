@@ -49,7 +49,7 @@ export interface Shift {
   siteId: string;
   checkIn: string; // ISO
   checkOut: string | null;
-  method: 'qr' | 'geo';
+  method: 'qr' | 'geo' | 'correction';
 }
 
 export interface ShiftSummary {
@@ -92,6 +92,65 @@ export interface Payslip {
   deductions: number;
   net: number;
   summary: PeriodSummary;
+  adjustments?: { day: string; amount: number; reason: string }[];
+}
+
+export interface CorrectionRequest {
+  id: string;
+  day: string;
+  kind: 'shift' | 'pay';
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  /** Last approved change when submitted. A stale proposal must be resubmitted. */
+  basedOn: string;
+  shiftId?: string;
+  checkIn?: string;
+  checkOut?: string;
+  originalShift?: Shift;
+  amount?: number;
+  reviewedAt?: string;
+  reviewer?: string;
+  reviewReason?: string;
+}
+
+/** Per-worker history; updated atomically so concurrent reviews cannot lose or double-apply changes. */
+export interface CorrectionLedger {
+  workerId: string;
+  siteId: string;
+  version: number;
+  requests: CorrectionRequest[];
+}
+
+/** A site-wide schedule notice. It never changes attendance or payroll. */
+export interface DayOff {
+  siteId: string;
+  day: string;
+  label: string;
+  active: boolean;
+}
+
+export interface DailyPay {
+  day: string;
+  summary: PeriodSummary;
+  open: boolean;
+  dayOff?: string;
+  base: number;
+  overtime: number;
+  night: number;
+  gross: number;
+  pf: number;
+  esi: number;
+  net: number;
+  adjustment?: number;
+}
+
+export interface PayCalendar {
+  month: string;
+  today: string;
+  days: DailyPay[];
+  /** Net difference between daily estimates and the monthly payslip, including advances. */
+  monthlyAdjustment: number;
 }
 
 export type FatigueRule = 'long_shift' | 'short_rest' | 'no_rest_day' | 'weekly_overload';
@@ -118,6 +177,8 @@ export interface ReportUpdate {
   status: ReportStatus;
   note?: string;
   day: string; // YYYY-MM-DD
+  fixResponse?: 'confirmed' | 'disputed';
+  actor?: 'admin' | 'reporter';
 }
 
 /** Stored report. Deliberately has no worker id, time-of-day or IP. */
@@ -133,6 +194,9 @@ export interface Report {
   /** redacted English translation (same as text when language is en or AI unavailable) */
   textEn: string;
   status: ReportStatus;
+  version?: number;
+  fixResponse?: 'confirmed' | 'disputed';
+  reporterSecretHash?: string;
   createdDay: string; // YYYY-MM-DD
   updates: ReportUpdate[];
 }

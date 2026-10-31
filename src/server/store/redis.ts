@@ -1,5 +1,8 @@
 import { Redis } from '@upstash/redis';
+import type { PaymentLedger } from '../../shared/payments';
 import type {
+  CorrectionLedger,
+  DayOff,
   FeedbackResponse,
   PassportEntry,
   Report,
@@ -14,6 +17,9 @@ import type { Repo, ShiftQuery } from './repo';
  * so the same interface can be backed by Upstash REST in production and a Map in tests.
  */
 export interface KvClient {
+  /** Atomically updates the canonical report and its site-list index. */
+  compareReportVersion(recordKey: string, siteKey: string, id: string, expectedVersion: number, value: string): Promise<boolean>;
+  compareHashVersion(key: string, field: string, expectedVersion: number, value: string): Promise<boolean>;
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<unknown>;
   /** Sets the key only when it does not exist. Resolves to 1 when set, 0 otherwise. */
@@ -60,6 +66,31 @@ export function createUpstashKv(url: string, token: string): KvClient {
   // Raw strings in and out: the store does its own JSON, so the client must not parse or rewrite values.
   const redis = new Redis({ url, token, automaticDeserialization: false });
   return {
+    async compareReportVersion(recordKey, siteKey, id, expectedVersion, value) {
+      const result = await redis.eval(`
+        local raw = redis.call('GET', KEYS[1])
+        if not raw then return 0 end
+        local old = cjson.decode(raw)
+        local next = cjson.decode(ARGV[3])
+        if (old.version or 0) ~= tonumber(ARGV[2]) then return 0 end
+        if old.siteId ~= next.siteId or old.caseCode ~= next.caseCode then return 0 end
+        redis.call('SET', KEYS[1], ARGV[3])
+        redis.call('HSET', KEYS[2], ARGV[1], ARGV[3])
+        return 1
+      `, [recordKey, siteKey], [id, expectedVersion, value]);
+      return result === 1;
+    },
+    async compareHashVersion(key, field, expectedVersion, value) {
+      const result = await redis.eval(`
+        local raw = redis.call('HGET', KEYS[1], ARGV[1])
+        local version = 0
+        if raw then version = cjson.decode(raw).version or 0 end
+        if version ~= tonumber(ARGV[2]) then return 0 end
+        redis.call('HSET', KEYS[1], ARGV[1], ARGV[3])
+        return 1
+      `, [key], [field, expectedVersion, value]);
+      return result === 1;
+    },
     get: (key) => redis.get<string>(key),
     set: (key, value) => redis.set(key, value),
     setnx: (key, value) => redis.setnx(key, value),
@@ -102,6 +133,8 @@ export function createUpstashKv(url: string, token: string): KvClient {
 export function bufferWrites(kv: KvClient): KvClient & { flush(): Promise<void> } {
   const queue: WriteOp[] = [];
   return {
+    compareReportVersion: (recordKey, siteKey, id, version, value) => kv.compareReportVersion(recordKey, siteKey, id, version, value),
+    compareHashVersion: (key, field, version, value) => kv.compareHashVersion(key, field, version, value),
     get: (key) => kv.get(key),
     hgetall: (key) => kv.hgetall(key),
     smembers: (key) => kv.smembers(key),
@@ -151,6 +184,27 @@ const openLockKey = (workerId: string): string => `fs:open-shift:${workerId}`;
 const byId = <T extends { id: string }>(a: T, b: T): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const byCheckIn = (a: Shift, b: Shift): number => (a.checkIn < b.checkIn ? -1 : a.checkIn > b.checkIn ? 1 : 0);
 
+async function readSites(kv: KvClient, ids: string[]): Promise<Site[]> {
+  const rows = await Promise.all(ids.map((id) => kv.get(`fs:site:${id}`)));
+  return rows.flatMap((r) => r === null ? [] : [JSON.parse(r) as Site]);
+}
+
+async function saveReportRecord(kv: KvClient, report: Report): Promise<void> {
+  await kv.set(`fs:report:${report.id}`, JSON.stringify(report));
+  await kv.hset(`fs:reports:${report.siteId}`, report.id, JSON.stringify(report));
+  await kv.set(`fs:report-code:${report.caseCode}`, report.id);
+}
+
+function updateReport(kv: KvClient, report: Report, expectedVersion: number): Promise<boolean> {
+  if (report.version !== expectedVersion + 1) return Promise.resolve(false);
+  return kv.compareReportVersion(`fs:report:${report.id}`, `fs:reports:${report.siteId}`, report.id, expectedVersion, JSON.stringify(report));
+}
+
+function savePayment(kv: KvClient, ledger: PaymentLedger, expectedVersion: number): Promise<boolean> {
+  if (ledger.version !== expectedVersion + 1) return Promise.resolve(false);
+  return kv.compareHashVersion(`fs:payments:${ledger.siteId}`, ledger.workerId, expectedVersion, JSON.stringify(ledger));
+}
+
 /**
  * Redis-backed repository. Key layout (all prefixed `fs:`):
  *   site:{id}                 JSON site          sites                  set of site ids
@@ -176,10 +230,6 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
     return raw === null ? null : json<Report>(raw);
   }
 
-  async function readSites(ids: string[]): Promise<Site[]> {
-    const rows = await Promise.all(ids.map((id) => kv.get(`fs:site:${id}`)));
-    return rows.flatMap((r) => (r === null ? [] : [json<Site>(r)]));
-  }
 
   async function openShiftOf(workerId: string): Promise<Shift | null> {
     const open = values<Shift>(await kv.hgetall(`fs:shifts:${workerId}`)).find((s) => s.checkOut === null);
@@ -197,6 +247,10 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
   }
 
   return {
+    async listPaymentLedgers(siteId) {
+      return values<PaymentLedger>(await kv.hgetall(`fs:payments:${siteId}`));
+    },
+    savePaymentLedger: (ledger, expectedVersion) => savePayment(kv, ledger, expectedVersion),
     async seededDay() {
       const value = await kv.get('fs:seeded');
       return value === null ? null : value.slice(0, 10);
@@ -211,8 +265,20 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
     },
 
     async listSites() {
-      const sites = await readSites(await kv.smembers('fs:sites'));
+      const sites = await readSites(kv, await kv.smembers('fs:sites'));
       return sites.sort(byId);
+    },
+    async listDaysOff(siteId) {
+      return values<DayOff>(await kv.hgetall(`fs:days-off:${siteId}`)).filter((d) => d.active);
+    },
+    async listCorrectionLedgers(siteId) {
+      return values<CorrectionLedger>(await kv.hgetall(`fs:corrections:${siteId}`));
+    },
+    saveCorrectionLedger(ledger, expectedVersion) {
+      return kv.compareHashVersion(`fs:corrections:${ledger.siteId}`, ledger.workerId, expectedVersion, JSON.stringify(ledger));
+    },
+    async saveDayOff(day) {
+      await kv.hset(`fs:days-off:${day.siteId}`, day.day, JSON.stringify(day));
     },
     async getSite(id) {
       const raw = await kv.get(`fs:site:${id}`);
@@ -264,11 +330,8 @@ export function createRedisRepo(kv: KvClient): RedisRepo {
       const id = await kv.get(`fs:report-code:${caseCode}`);
       return id === null ? null : getReport(id);
     },
-    async saveReport(report) {
-      await kv.set(`fs:report:${report.id}`, JSON.stringify(report));
-      await kv.hset(`fs:reports:${report.siteId}`, report.id, JSON.stringify(report));
-      await kv.set(`fs:report-code:${report.caseCode}`, report.id);
-    },
+    saveReport: (report) => saveReportRecord(kv, report),
+    compareAndSaveReport: (report, expectedVersion) => updateReport(kv, report, expectedVersion),
 
     async listFeedback(siteId) {
       const months = await kv.smembers(`fs:feedback-months:${siteId}`);

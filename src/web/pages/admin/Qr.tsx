@@ -4,6 +4,8 @@ import type { QrResponse } from '../../../shared/api';
 import { api } from '../../api';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { Spinner } from '../../components/Spinner';
+import { Icon } from '../../components/Icon';
+import { copyText } from '../../clipboard';
 import { t } from '../../i18n';
 
 const REFRESH_MS = 30_000;
@@ -11,6 +13,8 @@ const REFRESH_MS = 30_000;
 /** Kiosk view: a large check-in QR code that refreshes every 30 seconds, with a visible countdown. */
 export default function Qr() {
   const [image, setImage] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [nextAt, setNextAt] = useState(() => Date.now() + REFRESH_MS);
   const [now, setNow] = useState(() => Date.now());
@@ -24,9 +28,15 @@ export default function Qr() {
         const url = await QRCode.toDataURL(res.token, { margin: 2, width: 480, errorCorrectionLevel: 'M' });
         if (!alive) return;
         setImage(url);
+        setToken(res.token);
+        setCopied(null);
         setError(null);
       } catch (err) {
-        if (alive) setError(err);
+        if (alive) {
+          setError(err);
+          setImage(null);
+          setToken(null);
+        }
       }
     }
 
@@ -66,6 +76,19 @@ export default function Qr() {
         <div class="countdown-fill" style={{ width: `${Math.min(100, (seconds / (REFRESH_MS / 1000)) * 100)}%` }} />
       </div>
       <p class="muted">{t('admin.qr.hint')}</p>
+      {token ? (
+        <section class="card stack gate-code-card" aria-labelledby="gate-code-title">
+          <h2 id="gate-code-title">{t('admin.qr.manualTitle')}</h2>
+          <p class="muted">{t('admin.qr.manualHelp')}</p>
+          <label class="field-label" for="kiosk-token">{t('attendance.codeLabel')}</label>
+          <input id="kiosk-token" class="gate-token" value={token} readOnly spellcheck={false}
+            onFocus={(event) => event.currentTarget.select()} />
+          <button type="button" class="btn" onClick={() => { void copyText(token).then(setCopied); }}>
+            <Icon name="copy" size={20} />{t('admin.qr.copyCode')}
+          </button>
+          {copied !== null ? <p role="status">{t(copied ? 'common.copied' : 'admin.qr.copyFailed')}</p> : null}
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -71,59 +71,6 @@ html.text-lg {
   cursor: pointer;
 }
 
-.qol-lang-list {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.qol-lang-row {
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.qol-lang-choice {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 76px;
-  padding: 12px 18px;
-  border: 2px solid var(--border, #7a7a7a);
-  border-radius: var(--radius, 14px);
-  background: var(--surface, #ffffff);
-  color: var(--text, #1a1a1a);
-  font: inherit;
-  font-size: 1.5rem;
-  text-align: start;
-  cursor: pointer;
-}
-
-.qol-lang-choice[data-current="true"] {
-  border-color: var(--primary, #0b5d4b);
-  background: var(--primary, #0b5d4b);
-  color: var(--primary-text, #ffffff);
-}
-
-.qol-lang-name {
-  font-weight: 600;
-}
-
-.qol-hear {
-  flex: 0 0 auto;
-  width: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--border, #7a7a7a);
-  border-radius: var(--radius, 14px);
-  background: var(--surface, #ffffff);
-  color: var(--text, #1a1a1a);
-  cursor: pointer;
-}
 
 .qol-overlay button:focus-visible,
 .qol-lang-help:focus-visible,

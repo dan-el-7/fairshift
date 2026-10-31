@@ -45,5 +45,18 @@ export function createFakeFirestore(): Firestore {
     }),
   });
 
-  return { collection } as unknown as Firestore;
+  let transactionQueue = Promise.resolve();
+  async function runTransaction<T>(callback: (tx: { get: (ref: { get: () => Promise<unknown> }) => Promise<unknown>; set: (ref: { set: (value: Row) => Promise<void> }, value: Row) => void }) => Promise<T>): Promise<T> {
+    const previous = transactionQueue;
+    let release!: () => void;
+    transactionQueue = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    const writes: (() => Promise<void>)[] = [];
+    try {
+      const result = await callback({ get: (ref) => ref.get(), set: (ref, value) => { writes.push(() => ref.set(value)); } });
+      for (const write of writes) await write();
+      return result;
+    } finally { release(); }
+  }
+  return { collection, runTransaction } as unknown as Firestore;
 }

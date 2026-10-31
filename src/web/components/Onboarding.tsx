@@ -1,5 +1,7 @@
 import type { Role } from '../../shared/types';
 import { useLang } from '../i18n';
+import { AmbientBackdrop } from './AmbientBackdrop';
+import { useModalScrollLock } from './useModalScrollLock';
 import '../onboarding.css';
 import { COPY, TITLE_ID } from './onboarding/content';
 import { HelloStep, LanguageStep, SlidesStep } from './onboarding/parts';
@@ -22,6 +24,7 @@ export interface OnboardingProps {
  * (or at once with reduced motion). See OnboardingMode for each flow.
  */
 export function Onboarding({ onDone, mode = 'first', role = null, greet = false }: OnboardingProps) {
+  useModalScrollLock();
   const uiLang = useLang();
   const copy = COPY[uiLang];
   const slideRole: Role | null = mode === 'first' ? null : role;
@@ -35,17 +38,11 @@ export function Onboarding({ onDone, mode = 'first', role = null, greet = false 
       role="dialog"
       aria-modal="true"
       aria-labelledby={TITLE_ID}
-      onPointerDown={flow.arm}
     >
-      <div class="ob-blobs" aria-hidden="true">
-        <span class="ob-blob ob-blob-teal" />
-        <span class="ob-blob ob-blob-mint" />
-        <span class="ob-blob ob-blob-indigo" />
-        <span class="ob-blob ob-blob-amber" />
-      </div>
+      <AmbientBackdrop kind="onboarding" />
       <div class="ob-frost" aria-hidden="true" />
 
-      <div class="ob-stage">
+      <div class={`ob-stage${flow.step === 'language' ? ' is-language' : ''}`}>
         <div class="ob-top">
           <button type="button" class="ob-btn ob-btn-quiet" onClick={flow.complete}>
             {copy.skip}
@@ -53,7 +50,7 @@ export function Onboarding({ onDone, mode = 'first', role = null, greet = false 
         </div>
 
         {flow.step === 'hello' && <HelloStep flow={flow} />}
-        {flow.step === 'language' && <LanguageStep flow={flow} copy={copy} />}
+        {flow.step === 'language' && <LanguageStep flow={flow} />}
         {flow.step === 'slides' && slideSet && (
           <SlidesStep
             flow={flow}

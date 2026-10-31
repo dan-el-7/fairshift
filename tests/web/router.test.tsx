@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { render, screen, act, cleanup } from '@testing-library/preact';
-import { afterEach, describe, expect, it } from 'vitest';
-import { currentRoute, navigate, useRoute } from '../../src/web/router';
+import { render, screen, act, cleanup, fireEvent } from '@testing-library/preact';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { currentRoute, navigate, navigateLink, useRoute } from '../../src/web/router';
+
+const originalTransition = Object.getOwnPropertyDescriptor(document, 'startViewTransition');
 
 function RouteProbe() {
   const route = useRoute();
@@ -16,6 +18,8 @@ function RouteProbe() {
 afterEach(() => {
   cleanup();
   window.location.hash = '';
+  if (originalTransition) Object.defineProperty(document, 'startViewTransition', originalTransition);
+  else Reflect.deleteProperty(document, 'startViewTransition');
 });
 
 describe('router', () => {
@@ -51,5 +55,59 @@ describe('router', () => {
     });
     expect(screen.getByTestId('path').textContent).toBe('/track');
     expect(screen.getByTestId('code').textContent).toBe('XYZ');
+  });
+
+  it('coordinates an ordinary internal link through one native page transition', async () => {
+    window.location.hash = '#/w';
+    const start = vi.fn((update: () => void) => {
+      update();
+      return { ready: Promise.resolve(), finished: Promise.resolve() };
+    });
+    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: start });
+    render(<><RouteProbe /><a href="#/w/pay" onClick={navigateLink}>Pay</a></>);
+    await act(() => { fireEvent.click(screen.getByRole('link', { name: 'Pay' })); });
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('path').textContent).toBe('/w/pay');
+    expect(document.documentElement.dataset.navigationDirection).toBe('forward');
+    await act(() => navigate('/w'));
+    expect(document.documentElement.dataset.navigationDirection).toBe('back');
+  });
+
+  it('does not intercept modified clicks', () => {
+    window.location.hash = '#/w';
+    render(<a href="#/w/pay" onClick={navigateLink}>Pay</a>);
+    const link = screen.getByRole('link', { name: 'Pay' });
+    expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+  });
+
+  it('cleans up a page transition even when a filter changes before its animation finishes', async () => {
+    window.location.hash = '#/a';
+    let finish!: () => void;
+    const finished = new Promise<void>((resolve) => { finish = resolve; });
+    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: (update: () => void) => {
+      update();
+      return { ready: Promise.resolve(), finished };
+    } });
+    navigate('/a/reports');
+    navigate('/a/reports?filter=all');
+    await act(async () => { finish(); await finished; });
+    expect(document.documentElement.classList.contains('is-page-transitioning')).toBe(false);
+    expect(currentRoute().query.get('filter')).toBe('all');
+  });
+
+  it('holds the new snapshot until the loading placeholder is gone', async () => {
+    window.location.hash = '#/w';
+    let ready: Promise<void> = Promise.resolve();
+    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: (update: () => Promise<void>) => {
+      ready = update();
+      return { ready, finished: ready };
+    } });
+    render(<main id="main"><RouteProbe /><div class="skeleton-stack">Loading</div></main>);
+    navigate('/w/pay');
+    await act(async () => { await Promise.resolve(); });
+    expect(document.documentElement.classList.contains('is-page-transitioning')).toBe(true);
+    document.querySelector('.skeleton-stack')!.remove();
+    await act(async () => { await ready; });
+    expect(document.documentElement.classList.contains('is-page-transitioning')).toBe(false);
   });
 });

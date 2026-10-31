@@ -1,0 +1,47 @@
+.skills-print-title,
+.skills-print-verify {
+  display: none;
+}
+
+@media print {
+  @page { margin: 16mm; }
+
+  body, #app, main {
+    color: #111 !important;
+    background: #fff !important;
+  }
+
+  .skills-page > h1 { display: none; }
+  .skills-passport {
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .skills-passport .skills-print-title { display: block; font-size: 22pt; font-weight: 700; margin-bottom: 10mm; }
+  .skills-passport .cred-avatar,
+  .skills-passport .badge-verified,
+  .skills-screen-only,
+  header, nav, footer, .app-header, .app-nav, .app-footer { display: none !important; }
+  .skills-passport h2 { color: #111 !important; }
+  .skills-passport .cred-name { color: #111 !important; }
+  .skills-passport .muted { color: #444 !important; }
+  .skills-passport .entry-list { padding-left: 1.25rem; }
+  .skills-passport .entry-list li { break-inside: avoid; page-break-inside: avoid; margin-bottom: 5mm; }
+  .skills-print-verify {
+    display: flex;
+    align-items: center;
+    gap: 8mm;
+    margin-top: 10mm;
+    padding-top: 6mm;
+    border-top: 1px solid #aaa;
+    break-inside: avoid;
+  }
+  .skills-print-verify img { width: 38mm; height: 38mm; }
+  .skills-print-url { overflow-wrap: anywhere; word-break: break-word; font-size: 9pt; margin-top: 2mm; }
+}

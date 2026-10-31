@@ -1,5 +1,8 @@
-import { Firestore, type CollectionReference, type Query } from '@google-cloud/firestore';
+import { Firestore, type CollectionReference, type DocumentReference, type Query } from '@google-cloud/firestore';
+import type { PaymentLedger } from '../../shared/payments';
 import type {
+  CorrectionLedger,
+  DayOff,
   FeedbackResponse,
   PassportEntry,
   Report,
@@ -23,6 +26,28 @@ function isAlreadyExists(err: unknown): boolean {
 /** Firestore rejects undefined fields; a JSON round trip drops them and gives a plain object. */
 function plain<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function savePayment(db: Firestore, ledger: PaymentLedger, expectedVersion: number): Promise<boolean> {
+  if (ledger.version !== expectedVersion + 1) return Promise.resolve(false);
+  return db.runTransaction(async (tx) => {
+    const ref = db.collection('payments').doc(ledger.workerId) as DocumentReference<PaymentLedger>;
+    const previous = (await tx.get(ref)).data();
+    if ((previous?.version ?? 0) !== expectedVersion || (previous && previous.siteId !== ledger.siteId)) return false;
+    tx.set(ref, plain(ledger));
+    return true;
+  });
+}
+
+function updateReport(db: Firestore, report: Report, expectedVersion: number): Promise<boolean> {
+  if (report.version !== expectedVersion + 1) return Promise.resolve(false);
+  return db.runTransaction(async (tx) => {
+    const ref = db.collection('reports').doc(report.id) as DocumentReference<Report>;
+    const previous = (await tx.get(ref)).data();
+    if (!previous || (previous.version ?? 0) !== expectedVersion || previous.siteId !== report.siteId || previous.caseCode !== report.caseCode) return false;
+    tx.set(ref, plain(report));
+    return true;
+  });
 }
 
 /**
@@ -56,6 +81,22 @@ export function createFirestoreRepo(db: Firestore = new Firestore()): Repo {
   }
 
   return {
+    listPaymentLedgers: (siteId) => all(col<PaymentLedger>('payments').where('siteId', '==', siteId)),
+    savePaymentLedger: (ledger, expectedVersion) => savePayment(db, ledger, expectedVersion),
+    listCorrectionLedgers: (siteId) => all(col<CorrectionLedger>('corrections').where('siteId', '==', siteId)),
+    saveCorrectionLedger(ledger, expectedVersion) {
+      return db.runTransaction(async (tx) => {
+        const ref = col<CorrectionLedger>('corrections').doc(ledger.workerId);
+        const previous = (await tx.get(ref)).data();
+        if ((previous?.version ?? 0) !== expectedVersion) return false;
+        tx.set(ref, plain(ledger));
+        return true;
+      });
+    },
+    async listDaysOff(siteId) {
+      return (await all(col<DayOff>('daysOff').where('siteId', '==', siteId))).filter((d) => d.active);
+    },
+    saveDayOff: (day) => put('daysOff', `${day.siteId}_${day.day}`, day),
     async listSites() {
       const sites = await all(col<Site>('sites'));
       return sites.sort((a, b) => a.id.localeCompare(b.id));
@@ -117,6 +158,7 @@ export function createFirestoreRepo(db: Firestore = new Firestore()): Repo {
       return found[0] ?? null;
     },
     saveReport: (report) => put('reports', report.id, report),
+    compareAndSaveReport: (report, expectedVersion) => updateReport(db, report, expectedVersion),
 
     listFeedback: (siteId) => all(col<FeedbackResponse>('feedback').where('siteId', '==', siteId)),
     saveFeedback: (response) => put('feedback', response.id, response),

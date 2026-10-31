@@ -2,13 +2,12 @@ import { createPortal } from 'preact/compat';
 import { useCallback, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Language } from '../../shared/types';
 import { hasExplicitChoice } from '../langDetect';
-import { LANGUAGE_LABEL, LANGUAGES, setLang, t, useLang } from '../i18n';
+import { setLang, tIn, useLang } from '../i18n';
 import { PREF, readPref, writePref } from '../prefs';
-import { speak } from '../speech';
 import { Icon } from './Icon';
+import { LanguageChoices, LanguageHints } from './LanguageChoices';
+import { useModalScrollLock } from './useModalScrollLock';
 
-/** Fixed on purpose: the sheet must be readable whatever language is active. */
-const SHEET_TITLE = 'Choose language · भाषा चुनें · மொழியைத் தேர்ந்தெடுக்கவும்';
 const TITLE_ID = 'language-sheet-title';
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -24,14 +23,19 @@ interface LanguageSheetProps {
 /**
  * Modal language picker. Focus moves into the dialog, Tab stays inside it, Escape closes it,
  * and focus returns to the element that was focused before it opened.
- * Focusing or tapping a speaker button says the language's name in that language.
+ * Only speaker activation plays audio. Selection stays local until the user confirms.
  */
 export function LanguageSheet({ open, onClose }: LanguageSheetProps) {
   const lang = useLang();
+  return open ? <LanguageDialog initialLanguage={lang} onClose={onClose} /> : null;
+}
+
+function LanguageDialog({ initialLanguage, onClose }: { initialLanguage: Language; onClose: () => void }) {
+  useModalScrollLock();
+  const [draft, setDraft] = useState(initialLanguage);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    if (!open) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
     if (dialog) {
@@ -48,9 +52,7 @@ export function LanguageSheet({ open, onClose }: LanguageSheetProps) {
       document.removeEventListener('focusin', pullBack);
       previous?.focus();
     };
-  }, [open]);
-
-  if (!open) return null;
+  }, []);
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
@@ -74,8 +76,8 @@ export function LanguageSheet({ open, onClose }: LanguageSheetProps) {
     }
   };
 
-  const choose = (code: Language) => {
-    setLang(code, { explicit: true });
+  const confirm = () => {
+    setLang(draft, { explicit: true });
     onClose();
   };
 
@@ -88,50 +90,27 @@ export function LanguageSheet({ open, onClose }: LanguageSheetProps) {
     >
       <div
         ref={dialogRef}
-        class="qol-dialog"
+        class="qol-dialog language-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={TITLE_ID}
         onKeyDown={onKeyDown}
       >
         <div class="qol-dialog-head">
-          <h2 id={TITLE_ID} class="qol-dialog-title">
-            {SHEET_TITLE}
-          </h2>
-          <button type="button" class="qol-close" aria-label={t('common.close')} onClick={onClose}>
+          <div>
+            <h2 id={TITLE_ID} class="qol-dialog-title" lang={initialLanguage}>{tIn(initialLanguage, 'language.settingsTitle')}</h2>
+            <LanguageHints language={initialLanguage} />
+          </div>
+          <button type="button" class="qol-close" aria-label={tIn(initialLanguage, 'common.close')} onClick={onClose}>
             <span aria-hidden="true">×</span>
           </button>
         </div>
-        <ul class="qol-lang-list">
-          {LANGUAGES.map((code) => {
-            const name = LANGUAGE_LABEL[code];
-            const isCurrent = code === lang;
-            return (
-              <li class="qol-lang-row" key={code}>
-                <button
-                  type="button"
-                  class="qol-hear"
-                  lang={code}
-                  aria-label={`${t('lang.hear')}: ${name}`}
-                  onFocus={() => speak(name, code)}
-                  onClick={() => speak(name, code)}
-                >
-                  <Icon name="speaker" size={26} />
-                </button>
-                <button
-                  type="button"
-                  class="qol-lang-choice"
-                  lang={code}
-                  data-current={isCurrent ? 'true' : 'false'}
-                  onClick={() => choose(code)}
-                >
-                  <Icon name="globe" size={28} />
-                  <span class="qol-lang-name">{name}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <form onSubmit={(event) => { event.preventDefault(); confirm(); }}>
+          <LanguageChoices value={draft} onChange={setDraft} name="settings-language" />
+          <div class="language-dialog-footer">
+            <button type="submit" class="btn btn-primary" lang={draft}>{tIn(draft, 'language.use')}</button>
+          </div>
+        </form>
       </div>
     </div>
   );

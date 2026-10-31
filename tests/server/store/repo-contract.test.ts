@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { FeedbackResponse, PassportEntry, Report, Shift, Site, Worker } from '../../../src/shared/types';
+import type { PaymentLedger } from '../../../src/shared/payments';
+import type { CorrectionLedger, FeedbackResponse, PassportEntry, Report, Shift, Site, Worker } from '../../../src/shared/types';
 import { createFirestoreRepo } from '../../../src/server/store/firestore';
 import { createMemoryRepo } from '../../../src/server/store/memory';
 import type { Repo } from '../../../src/server/store/repo';
@@ -68,6 +69,72 @@ describe.each(backends)('repo contract: $name', ({ make }) => {
     expect(await repo.getSite('site-a')).toEqual(SITE_A);
     expect(await repo.getSite('missing')).toBeNull();
     expect((await repo.listSites()).map((s) => s.id)).toEqual(['site-a', 'site-b']);
+  });
+
+  it('serializes payment receipts and responses without losing history or exposing another site', async () => {
+    const repo = await seeded();
+    const ledger: PaymentLedger = {
+      workerId: RAVI.id, siteId: SITE_A.id, version: 1,
+      records: [{ id: 'payment-1', period: '2026-10', amount: 75000, recordedAt: '2026-10-26' }], confirmations: [],
+    };
+    expect(await repo.savePaymentLedger(ledger, 0)).toBe(true);
+    expect(await repo.savePaymentLedger(ledger, 0)).toBe(false);
+    expect(await repo.savePaymentLedger({ ...ledger, version: 9 }, 1)).toBe(false);
+    const next = { ...ledger, version: 2, confirmations: [{ id: 'answer-1', recordId: 'payment-1', decision: 'received' as const, confirmedAt: '2026-10-27' }] };
+    const writes = await Promise.all([repo.savePaymentLedger(next, 1), repo.savePaymentLedger({ ...ledger, version: 2, records: [...ledger.records, { ...ledger.records[0]!, id: 'payment-2' }] }, 1)]);
+    expect(writes.sort()).toEqual([false, true]);
+    const stored = (await repo.listPaymentLedgers(SITE_A.id))[0]!;
+    expect(stored.version).toBe(2);
+    expect(stored.records[0]?.id).toBe('payment-1');
+    expect(await repo.listPaymentLedgers(SITE_B.id)).toEqual([]);
+    stored.records.length = 0;
+    expect((await repo.listPaymentLedgers(SITE_A.id))[0]?.records.length).toBeGreaterThan(0);
+  });
+
+  it('atomically changes reports and their list/index views, including legacy version-zero records', async () => {
+    const repo = await seeded();
+    expect(await repo.compareAndSaveReport({ ...REPORT_1, id: 'missing', version: 1 }, 0)).toBe(false);
+    expect(await repo.compareAndSaveReport({ ...REPORT_1, siteId: SITE_B.id, version: 1 }, 0)).toBe(false);
+    expect(await repo.compareAndSaveReport({ ...REPORT_1, version: 3 }, 0)).toBe(false);
+    const first: Report = { ...REPORT_1, version: 1, status: 'resolved', updates: [{ status: 'resolved', day: '2026-10-27' }] };
+    const competing: Report = { ...first, status: 'in_progress' };
+    expect((await Promise.all([repo.compareAndSaveReport(first, 0), repo.compareAndSaveReport(competing, 0)])).sort()).toEqual([false, true]);
+    const stored = await repo.getReport(REPORT_1.id);
+    expect(stored?.version).toBe(1);
+    expect(await repo.getReportByCode(REPORT_1.caseCode)).toEqual(stored);
+    expect((await repo.listReports(SITE_A.id)).find((r) => r.id === REPORT_1.id)).toEqual(stored);
+    expect(await repo.compareAndSaveReport({ ...first, version: 2 }, 0)).toBe(false);
+    expect((await repo.listReports(SITE_B.id)).map((r) => r.id)).toEqual([REPORT_B.id]);
+  });
+
+  it('atomically saves correction history, rejects stale versions and keeps copies scoped to the site', async () => {
+    const repo = await seeded();
+    const ledger: CorrectionLedger = { workerId: RAVI.id, siteId: SITE_A.id, version: 1, requests: [] };
+    expect(await repo.saveCorrectionLedger(ledger, 0)).toBe(true);
+    expect(await repo.saveCorrectionLedger(ledger, 0)).toBe(false);
+    const next = { ...ledger, version: 2 };
+    const results = await Promise.all([repo.saveCorrectionLedger(next, 1), repo.saveCorrectionLedger(next, 1)]);
+    expect(results.sort()).toEqual([false, true]);
+    expect(await repo.listCorrectionLedgers(SITE_B.id)).toEqual([]);
+    const returned = (await repo.listCorrectionLedgers(SITE_A.id))[0]!;
+    returned.version = 99;
+    expect((await repo.listCorrectionLedgers(SITE_A.id))[0]?.version).toBe(2);
+    expect((await repo.listShifts({ workerId: RAVI.id }))[0]).toEqual(SHIFT_DONE);
+  });
+
+  it('keeps schedule notices per site and date, and removes them without touching shifts', async () => {
+    const repo = await seeded();
+    const notice = { siteId: SITE_A.id, day: '2026-10-26', label: 'Maintenance', active: true };
+    await repo.saveDayOff(notice);
+    await repo.saveDayOff({ ...notice, day: '2026-10-27', label: 'Rest day' });
+    expect(await repo.listDaysOff(SITE_A.id)).toHaveLength(2);
+    expect(await repo.listDaysOff(SITE_B.id)).toEqual([]);
+    const returned = await repo.listDaysOff(SITE_A.id);
+    returned[0]!.label = 'Mutated';
+    expect((await repo.listDaysOff(SITE_A.id))[0]?.label).toBe('Maintenance');
+    await repo.saveDayOff({ ...notice, active: false });
+    expect((await repo.listDaysOff(SITE_A.id)).map((d) => d.day)).toEqual(['2026-10-27']);
+    expect((await repo.listShifts({ workerId: RAVI.id })).map((s) => s.id)).toEqual([SHIFT_DONE.id, SHIFT_OPEN.id]);
   });
 
   it('saves, gets and lists workers by site', async () => {

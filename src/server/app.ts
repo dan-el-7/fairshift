@@ -8,9 +8,12 @@ import { bodySizeLimit, rateLimit, securityHeaders } from './middleware/security
 import { adminRoutes } from './routes/admin';
 import { attendanceRoutes } from './routes/attendance';
 import { authRoutes } from './routes/auth';
+import { correctionRoutes } from './routes/corrections';
 import { feedbackRoutes } from './routes/feedback';
 import { passportRoutes } from './routes/passport';
 import { payRoutes } from './routes/pay';
+import { paymentRoutes } from './routes/payments';
+import { patternRoutes } from './routes/patterns';
 import { reportRoutes } from './routes/reports';
 import { ttsRoutes } from './routes/tts';
 import type { ReportAI } from './services/ai';
@@ -71,7 +74,10 @@ export function createApp(input: AppDeps): Hono<AppEnv> {
   app.get('/api/health', (c) => c.json({ ok: true }));
   app.route('/api', authRoutes(deps));
   app.route('/api', attendanceRoutes(deps));
+  app.route('/api', correctionRoutes(deps));
   app.route('/api', payRoutes(deps));
+  app.route('/api', paymentRoutes(deps));
+  app.route('/api', patternRoutes(deps));
   app.route('/api', reportRoutes(deps));
   app.route('/api', feedbackRoutes(deps));
   app.route('/api', passportRoutes(deps));

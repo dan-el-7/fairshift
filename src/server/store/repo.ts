@@ -1,4 +1,7 @@
+import type { PaymentLedger } from '../../shared/payments';
 import type {
+  CorrectionLedger,
+  DayOff,
   FeedbackResponse,
   PassportEntry,
   Report,
@@ -36,10 +39,23 @@ export interface Repo {
   /** Saves a new open shift only if the worker has none open. False when one already is. */
   startShift(shift: Shift): Promise<boolean>;
 
+  listDaysOff(siteId: string): Promise<DayOff[]>;
+  saveDayOff(day: DayOff): Promise<void>;
+
+  listCorrectionLedgers(siteId: string): Promise<CorrectionLedger[]>;
+  /** Compare-and-swap. expectedVersion=0 creates a ledger only when absent. */
+  saveCorrectionLedger(ledger: CorrectionLedger, expectedVersion: number): Promise<boolean>;
+
+  listPaymentLedgers(siteId: string): Promise<PaymentLedger[]>;
+  /** Append/review a payment receipt only when the previous ledger version still matches. */
+  savePaymentLedger(ledger: PaymentLedger, expectedVersion: number): Promise<boolean>;
+
   listReports(siteId: string): Promise<Report[]>;
   getReport(id: string): Promise<Report | null>;
   getReportByCode(caseCode: string): Promise<Report | null>;
   saveReport(report: Report): Promise<void>;
+  /** Atomic report update; legacy records without a version are version zero. */
+  compareAndSaveReport(report: Report, expectedVersion: number): Promise<boolean>;
 
   listFeedback(siteId: string): Promise<FeedbackResponse[]>;
   saveFeedback(response: FeedbackResponse): Promise<void>;

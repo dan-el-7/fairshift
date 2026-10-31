@@ -180,10 +180,25 @@ async function seedWorker(repo: Repo, seed: WorkerSeed, site: Site, ctx: SeedCon
   for (const shift of shiftsFor({ ...seed, joinedOn }, site, ctx.today, ctx.rand)) {
     await repo.saveShift(shift);
   }
+  await seedPreviousMonth(repo, { ...seed, joinedOn }, site, ctx.today);
 
   await seedCheckedIn(repo, seed, ctx);
 
   if (seed.role === 'worker') await seedPassport(repo, seed, site, ctx);
+}
+
+/** Separate deterministic history makes pay comparison usable without changing recent demo attendance. */
+async function seedPreviousMonth(repo: Repo, seed: WorkerSeed, site: Site, today: string): Promise<void> {
+  if (seed.role !== 'worker') return;
+  const last = addDays(today.slice(0, 7) + '-01', -1);
+  for (let day = last.slice(0, 7) + '-01'; day <= last; day = addDays(day, 1)) {
+    if (day < seed.joinedOn || weekday(day) === 0) continue;
+    const hours = weekday(day) === 5 ? 9 : 8;
+    await repo.saveShift({
+      id: `history-${seed.id}-${day}`, workerId: seed.id, siteId: site.id,
+      checkIn: atIst(day, 9 * 60), checkOut: atIst(day, (9 + hours) * 60), method: 'qr',
+    });
+  }
 }
 
 /**

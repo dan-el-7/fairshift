@@ -3,6 +3,8 @@ import { App } from './app';
 import { applySavedTextSize } from './components/TextSizeToggle';
 import { applyTheme, savedTheme } from './theme';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/noto-sans-devanagari/wght.css';
+import '@fontsource-variable/noto-sans-tamil/wght.css';
 import './styles.css';
 import './qol.css';
 

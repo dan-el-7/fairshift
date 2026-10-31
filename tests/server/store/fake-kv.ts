@@ -12,6 +12,27 @@ export function createFakeKv(): FakeKv {
   const sets = new Map<string, Set<string>>();
 
   return {
+    async compareReportVersion(recordKey, siteKey, id, expectedVersion, value) {
+      const raw = strings.get(recordKey);
+      if (!raw) return false;
+      const previous = JSON.parse(raw) as { version?: number; siteId: string; caseCode: string };
+      const next = JSON.parse(value) as { siteId: string; caseCode: string };
+      if ((previous.version ?? 0) !== expectedVersion || previous.siteId !== next.siteId || previous.caseCode !== next.caseCode) return false;
+      strings.set(recordKey, value);
+      const hash = hashes.get(siteKey) ?? new Map<string, string>();
+      hash.set(id, value);
+      hashes.set(siteKey, hash);
+      return true;
+    },
+    async compareHashVersion(key, field, expectedVersion, value) {
+      const hash = hashes.get(key) ?? new Map<string, string>();
+      const raw = hash.get(field);
+      const previous = raw ? JSON.parse(raw) as { version: number } : undefined;
+      if ((previous?.version ?? 0) !== expectedVersion) return false;
+      hash.set(field, value);
+      hashes.set(key, hash);
+      return true;
+    },
     async get(key) {
       return strings.get(key) ?? null;
     },

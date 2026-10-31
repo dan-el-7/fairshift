@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { CreateReportResponse, ReportPublic } from '../../shared/api';
@@ -66,6 +66,7 @@ export function reportRoutes(deps: Deps): Hono<AppEnv> {
 
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty AI transcript must fall back to the reporter's own text
     const text = redactPII(analysis.text || body.text || '');
+    const reporterToken = randomBytes(32).toString('base64url');
     const report: Report = {
       id: randomUUID(),
       caseCode: await freshCaseCode(repo),
@@ -76,6 +77,8 @@ export function reportRoutes(deps: Deps): Hono<AppEnv> {
       text,
       textEn: redactPII(analysis.textEn || text),
       status: 'open',
+      version: 1,
+      reporterSecretHash: createHash('sha256').update(reporterToken).digest('hex'),
       createdDay: dayBucket(deps.now()),
       updates: [],
     };
@@ -85,7 +88,9 @@ export function reportRoutes(deps: Deps): Hono<AppEnv> {
       caseCode: report.caseCode,
       category: report.category,
       severity: report.severity,
+      reporterToken,
     };
+    c.header('Cache-Control', 'no-store');
     return c.json(response);
   });
 
@@ -103,7 +108,33 @@ export function reportRoutes(deps: Deps): Hono<AppEnv> {
       createdDay: report.createdDay,
       updates: report.updates,
     };
-    return c.json(publicView);
+    c.header('Cache-Control', 'no-store');
+    return c.json({ ...publicView, version: report.version ?? 0, confirmationAvailable: Boolean(report.reporterSecretHash), fixResponse: report.fixResponse });
+  });
+
+  api.post('/reports/track/:caseCode/respond', async (c) => {
+    const schema = z.object({ reporterToken: z.string().min(32).max(128), decision: z.enum(['confirmed', 'disputed']), expectedVersion: z.number().int().nonnegative(), note: z.string().trim().max(500).optional() });
+    const body = await parseBody(c, schema);
+    if (body instanceof Response) return body;
+    const code = c.req.param('caseCode').toUpperCase();
+    if (!CASE_CODE_RE.test(code)) return jsonError(c, 404, 'case not found');
+    const existing = await repo.getReportByCode(code);
+    if (!existing) return jsonError(c, 404, 'case not found');
+    const supplied = createHash('sha256').update(body.reporterToken).digest();
+    const expected = existing.reporterSecretHash ? Buffer.from(existing.reporterSecretHash, 'hex') : Buffer.alloc(32);
+    if (!existing.reporterSecretHash || !timingSafeEqual(supplied, expected)) return jsonError(c, 403, 'confirmation unavailable');
+    if (existing.status !== 'resolved') return jsonError(c, 409, 'report is not resolved');
+    const version = existing.version ?? 0;
+    if (version !== body.expectedVersion) return jsonError(c, 409, 'report has changed');
+    if (existing.fixResponse) return jsonError(c, 409, 'reporter already responded');
+    const status = body.decision === 'disputed' ? 'open' : existing.status;
+    const update: Report['updates'][number] = { status, day: dayBucket(deps.now()), fixResponse: body.decision, actor: 'reporter' };
+    if (body.note?.length) update.note = redactPII(body.note);
+    const saved: Report = { ...existing, status, version: version + 1, fixResponse: body.decision, updates: [...existing.updates, update] };
+    if (!(await repo.compareAndSaveReport(saved, version))) return jsonError(c, 409, 'report has changed');
+    const publicView: ReportPublic = { caseCode: saved.caseCode, category: saved.category, severity: saved.severity, status: saved.status, createdDay: saved.createdDay, updates: saved.updates };
+    c.header('Cache-Control', 'no-store');
+    return c.json({ ...publicView, version: saved.version, confirmationAvailable: true, fixResponse: saved.fixResponse });
   });
 
   return api;

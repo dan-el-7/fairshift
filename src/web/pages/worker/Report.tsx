@@ -7,6 +7,7 @@ import { Banner } from '../../components/Banner';
 import { Icon, type IconName } from '../../components/Icon';
 import { SpeakButton } from '../../components/SpeakButton';
 import { copyText } from '../../clipboard';
+import { storeReporterKey } from '../../reporterKeys';
 import { DEMO_REPORTS } from '../../../shared/demoReports';
 import { t, type TKey, useLang } from '../../i18n';
 import { navigate } from '../../router';
@@ -26,31 +27,6 @@ const CATEGORY_ICON: Partial<Record<string, IconName>> = {
   workload: 'clock',
   other: 'help',
 };
-
-/** Three visible steps: 1 category, 2 describe, 3 done. Presentation only. */
-function Steps({ current }: { current: 1 | 2 | 3 }) {
-  const items: { key: TKey }[] = [{ key: 'report.whatWrong' }, { key: 'report.describe' }, { key: 'report.caseCode' }];
-  return (
-    <ol class="steps" aria-label={t('report.title')}>
-      {items.map((item, index) => {
-        const n = index + 1;
-        const state = n === current ? 'current' : n < current ? 'done' : undefined;
-        return (
-          <li
-            key={item.key}
-            class={state === 'done' ? 'is-done' : undefined}
-            aria-current={state === 'current' ? 'step' : undefined}
-          >
-            <span class="step-num" aria-hidden="true">
-              {n}
-            </span>
-            <span>{t(item.key)}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
 
 /**
  * Voice note capture. The recorder reports its end (stop, time limit or error) through onFinished, so the
@@ -169,6 +145,7 @@ function VoicePanel({
 /** Confirmation after a report is sent: the case code, a copy button, and the way to track it. */
 function ReportSent({ result, onAnother }: { result: CreateReportResponse; onAnother: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   // The form is replaced by this screen, so move focus here for screen reader users.
   useEffect(() => {
@@ -179,12 +156,17 @@ function ReportSent({ result, onAnother }: { result: CreateReportResponse; onAno
     setCopied(await copyText(result.caseCode));
   }
 
+  async function copyPrivateKey() {
+    const ok = await copyText(result.reporterToken);
+    setCopied(ok);
+    setCopyFailed(!ok);
+  }
+
   return (
     <section class="card stack" aria-labelledby="sent-title">
       <h1 id="sent-title" ref={headingRef} tabIndex={-1}>
         {t('report.received')}
       </h1>
-      <Steps current={3} />
       <div class="ticket">
         <p>{t('report.caseCode')}</p>
         <p class="case-code" aria-label={result.caseCode}>
@@ -198,9 +180,8 @@ function ReportSent({ result, onAnother }: { result: CreateReportResponse; onAno
           {copied ? <span role="status">{t('common.copied')}</span> : null}
         </div>
       </div>
-      <Banner tone="warn">
-        <p>{t('report.saveCode')}</p>
-      </Banner>
+      <Banner tone="warn"><p>{t('report.saveCode')}</p></Banner>
+      <Banner tone="warn"><p>{t('closure.saveSecret')}</p><label class="sr-only" for="private-report-key">{t('closure.secretLabel')}</label><input id="private-report-key" class="reporter-key" readonly value={result.reporterToken} /><button type="button" class="btn" onClick={() => void copyPrivateKey()}>{t('closure.copySecret')}</button>{copied ? <span role="status">{t('common.copied')}</span> : null}{copyFailed ? <span role="status">{t('closure.copyManually')}</span> : null}</Banner>
       <div class="row">
         <SpeakButton text={`${t('report.received')} ${t('report.saveCode')}`} />
       </div>
@@ -250,6 +231,7 @@ export default function Report({ me }: { me: Me }) {
     try {
       const res = await api.post<CreateReportResponse>('/api/reports', payload);
       setResult(res);
+      storeReporterKey(res.caseCode, res.reporterToken);
       setText('');
       note.clearAudio();
     } catch {
@@ -271,22 +253,15 @@ export default function Report({ me }: { me: Me }) {
     );
   }
 
-  const step: 1 | 2 = category === null && !text.trim() && !note.audio ? 1 : 2;
-
   return (
-    <form class="stack" onSubmit={(event) => void submit(event)} aria-labelledby="report-title">
+    <form class="stack worker-report" onSubmit={(event) => void submit(event)} aria-labelledby="report-title">
       <h1 id="report-title">{t('report.title')}</h1>
-      <Steps current={step} />
-
-      <div class="notice-anon">
-        <Icon name="shield" size={24} />
+      <a class="report-track" href="#/track"><Icon name="track" size={20} />{t('report.trackExisting')}</a>
+      <details class="privacy-note">
+        <summary><Icon name="shield" size={20} />{t('report.privacyTitle')}</summary>
         <p>{t('report.anonymous')}</p>
-      </div>
-      <div class="row">
         <SpeakButton text={t('report.anonymous')} />
-      </div>
-
-      <CategoryPicker categories={categories} category={category} onChange={setCategory} />
+      </details>
 
       <div class="field">
         <label class="field-label" for="report-text">
@@ -313,6 +288,11 @@ export default function Report({ me }: { me: Me }) {
           onStop={note.stopVoice}
         />
       ) : null}
+
+      <details class="card category-picker">
+        <summary>{t('report.categoryOptional', { category: category ? t(`hazard.${category}` as TKey) : t('report.notSure') })}</summary>
+        <CategoryPicker categories={categories} category={category} onChange={setCategory} />
+      </details>
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
 

@@ -184,7 +184,7 @@ describe('admin reports', () => {
         return { body: reports };
       },
     });
-    window.location.hash = '#/a/reports';
+    window.location.hash = '#/a/reports?filter=all';
 
     render(<App />);
 
@@ -198,6 +198,7 @@ describe('admin reports', () => {
     expect(original.getAttribute('lang')).toBe('ta');
 
     const scope = within(item as HTMLElement);
+    fireEvent.click(scope.getByText('Update report'));
     fireEvent.change(scope.getByLabelText('New status'), { target: { value: 'resolved' } });
     fireEvent.input(scope.getByLabelText('Note (optional)'), { target: { value: 'Wire fixed' } });
     const form = item?.querySelector('form');
@@ -205,7 +206,7 @@ describe('admin reports', () => {
     fireEvent.submit(form!);
 
     await waitFor(() => expect(item?.querySelector('.badge-status')?.textContent).toBe('Resolved'));
-    expect(patchBodies).toEqual([{ status: 'resolved', note: 'Wire fixed' }]);
+    expect(patchBodies).toEqual([{ status: 'resolved', note: 'Wire fixed', expectedVersion: 0 }]);
     const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
     expect(patchCall?.[0]).toBe('/api/admin/reports/r1');
     expect(screen.getByText('Report updated.')).toBeTruthy();

@@ -2,10 +2,11 @@ import { PREF, readPref, writePref } from './prefs';
 
 export type ThemeChoice = 'auto' | 'light' | 'dark';
 
-/** The saved choice; 'auto' follows the device's light/dark setting. */
+/** New visitors start dark; explicit Auto (including the old empty value) follows the device. */
 export function savedTheme(): ThemeChoice {
   const value = readPref(PREF.theme);
-  return value === 'light' || value === 'dark' ? value : 'auto';
+  if (value === 'auto' || value === '') return 'auto';
+  return value === 'light' ? 'light' : 'dark';
 }
 
 /**
@@ -16,6 +17,10 @@ export function applyTheme(choice: ThemeChoice): void {
   const root = document.documentElement;
   if (choice === 'auto') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', choice);
+  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+    const light = choice === 'auto' ? meta.media.includes('light') : choice === 'light';
+    meta.content = light ? '#fafafa' : '#09090b';
+  });
 }
 
 /**
@@ -33,7 +38,7 @@ function repaintGlass(): void {
 
 /** Saves and applies a choice. */
 export function setTheme(choice: ThemeChoice): void {
-  writePref(PREF.theme, choice === 'auto' ? '' : choice);
+  writePref(PREF.theme, choice);
   applyTheme(choice);
   repaintGlass();
 }

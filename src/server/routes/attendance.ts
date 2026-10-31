@@ -8,6 +8,7 @@ import { detectFatigue } from '../domain/fatigue';
 import { verifyQrToken } from '../domain/qrToken';
 import { requireRole, type AppEnv } from '../middleware/auth';
 import { sessionContext } from '../services/people';
+import { effectiveWork } from '../services/corrections';
 import { parseBody } from './http';
 
 const checkInSchema = z.union([
@@ -79,7 +80,8 @@ export function attendanceRoutes(deps: Deps): Hono<AppEnv> {
     if (!ctx) return c.json({ error: 'sign in required' }, 401);
     const now = deps.now();
     const since = new Date(now.getTime() - LOOKBACK_DAYS * DAY_MS).toISOString();
-    const shifts = await repo.listShifts({ workerId: ctx.worker.id, since });
+    const work = await effectiveWork(repo, ctx.site.id, ctx.worker.id);
+    const shifts = work.shifts.filter((s) => Date.parse(s.checkIn) >= Date.parse(since));
 
     const recent: ShiftWithSummary[] = shifts
       .slice()

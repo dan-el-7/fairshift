@@ -1,13 +1,42 @@
 import type { AttendanceMe, Me } from '../../../shared/api';
-import type { FatigueFlag } from '../../../shared/types';
+import type { FatigueFlag, Payslip, ShiftWithSummary } from '../../../shared/types';
 import { Banner } from '../../components/Banner';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { Icon } from '../../components/Icon';
 import { SpeakButton } from '../../components/SpeakButton';
 import { Spinner } from '../../components/Spinner';
 import { Tile } from '../../components/Tile';
-import { formatTime, t, type TKey } from '../../i18n';
+import { formatMoney, formatTime, istDay, periodLabel, t, type TKey } from '../../i18n';
 import { useApiData } from '../../useApiData';
+import UpcomingDaysOff from './UpcomingDaysOff';
+
+/** Count only the part of completed shifts inside today's IST calendar day. */
+export function completedHoursToday(shifts: ShiftWithSummary[], now = new Date()): number {
+  const start = Date.parse(`${istDay(now.toISOString())}T00:00:00+05:30`);
+  const end = start + 86_400_000;
+  const ms = shifts.reduce((total, shift) => {
+    if (!shift.checkOut) return total;
+    return total + Math.max(0, Math.min(end, Date.parse(shift.checkOut)) - Math.max(start, Date.parse(shift.checkIn)));
+  }, 0);
+  return Math.round(ms / 36_000) / 100;
+}
+
+function HomeSummary({ attendance }: { attendance: AttendanceMe | undefined }) {
+  const period = istDay(new Date().toISOString()).slice(0, 7);
+  const pay = useApiData<Payslip>(`/api/pay/me?period=${period}`);
+  return (
+    <section class="home-summary" aria-label={t('home.summary')}>
+      <a class="card summary-link" href="#/w/attendance">
+        <span class="muted">{t('home.todayHours')}</span>
+        <strong>{attendance ? t('common.hours', { hours: completedHoursToday(attendance.recent) }) : '—'}</strong>
+      </a>
+      <a class="card summary-link" href="#/w/pay">
+        <span class="muted">{t('home.calculatedPay', { period: periodLabel(period) })}</span>
+        <strong>{pay.data ? formatMoney(pay.data.net) : t(pay.error ? 'home.payUnavailable' : 'common.loading')}</strong>
+      </a>
+    </section>
+  );
+}
 
 function FatigueBanner({ flags }: { flags: FatigueFlag[] }) {
   const lines = flags.map((flag) => t(`fatigue.${flag.rule}` as TKey, flag.detail));
@@ -56,7 +85,7 @@ export default function Home({ me }: { me: Me }) {
           ) : null}
           <a class="btn btn-primary" href="#/w/attendance">
             <Icon name="checkin" size={20} />
-            {t('home.tile.checkin')}
+            {t(open ? 'attendance.checkOut' : 'attendance.checkIn')}
           </a>
         </div>
       </section>
@@ -64,6 +93,8 @@ export default function Home({ me }: { me: Me }) {
       {attendance.loading && !data ? <Spinner /> : null}
       {attendance.error ? <ErrorMessage error={attendance.error} onRetry={attendance.reload} /> : null}
       {data && data.fatigue.length > 0 ? <FatigueBanner flags={data.fatigue} /> : null}
+      <HomeSummary attendance={data} />
+      <UpcomingDaysOff />
 
       <section class="stack" aria-labelledby="menu-title">
         <h2 id="menu-title">{t('home.menu')}</h2>

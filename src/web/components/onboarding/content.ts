@@ -12,7 +12,6 @@ export type Slides = [Slide, Slide, Slide, Slide];
 export interface Copy {
   greeting: string;
   tap: string;
-  chooseTitle: string;
   roles: Record<Role, Slides>;
   next: string;
   back: string;
@@ -28,7 +27,6 @@ export const COPY: Record<Language, Copy> = {
   en: {
     greeting: 'Hello',
     tap: 'Tap to begin',
-    chooseTitle: 'Choose your language',
     roles: {
       worker: [
         { title: 'Check in with one tap', body: 'Scan the site QR or use your location. Your hours and overtime are counted for you.' },
@@ -53,7 +51,6 @@ export const COPY: Record<Language, Copy> = {
   hi: {
     greeting: 'नमस्ते',
     tap: 'शुरू करने के लिए टैप करें',
-    chooseTitle: 'अपनी भाषा चुनें',
     roles: {
       worker: [
         { title: 'एक टैप में हाज़िरी लगाएँ', body: 'साइट का QR स्कैन करें या अपनी लोकेशन इस्तेमाल करें। आपके घंटे और ओवरटाइम अपने-आप गिने जाते हैं।' },
@@ -78,7 +75,6 @@ export const COPY: Record<Language, Copy> = {
   ta: {
     greeting: 'வணக்கம்',
     tap: 'தொடங்க தட்டவும்',
-    chooseTitle: 'உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்',
     roles: {
       worker: [
         { title: 'ஒரே தட்டலில் வருகை பதிவு', body: 'தள QR-ஐ ஸ்கேன் செய்யுங்கள் அல்லது இருப்பிடத்தைப் பயன்படுத்துங்கள். உங்கள் நேரமும் கூடுதல் நேரமும் உங்களுக்காகக் கணக்கிடப்படும்.' },
@@ -112,10 +108,8 @@ export const ART: Record<Role, [ArtKind, ArtKind, ArtKind, ArtKind]> = {
 
 /** Order in which the hello greetings cycle. */
 export const ORDER: Language[] = ['en', 'hi', 'ta'];
-export const SUBTITLE: Record<Language, string | null> = { en: null, hi: 'Hindi', ta: 'Tamil' };
 export const SWIPE_PX = 50;
 export const GREET_MS = 2900;
-export const CHOOSE_MS = 450;
 export const EXIT_MS = 300;
 export const TITLE_ID = 'ob-title';
 export const TAP_ID = 'ob-tap-label';

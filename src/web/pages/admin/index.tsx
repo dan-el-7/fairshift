@@ -11,12 +11,12 @@ import Qr from './Qr';
 import Reports from './Reports';
 import Workers from './Workers';
 
-const SECTIONS: { path: string; label: TKey; icon: IconName }[] = [
-  { path: '/a', label: 'admin.nav.dashboard', icon: 'grid' },
-  { path: '/a/reports', label: 'admin.nav.reports', icon: 'file' },
-  { path: '/a/qr', label: 'admin.nav.qr', icon: 'qr' },
-  { path: '/a/workers', label: 'admin.nav.workers', icon: 'users' },
-  { path: '/a/feedback', label: 'admin.nav.feedback', icon: 'feedback' },
+const SECTIONS: { path: string; label: TKey; short: TKey; icon: IconName }[] = [
+  { path: '/a', label: 'admin.nav.dashboard', short: 'admin.nav.short.dashboard', icon: 'grid' },
+  { path: '/a/reports', label: 'admin.nav.reports', short: 'admin.nav.short.reports', icon: 'file' },
+  { path: '/a/qr', label: 'admin.nav.qr', short: 'admin.nav.short.qr', icon: 'qr' },
+  { path: '/a/workers', label: 'admin.nav.workers', short: 'admin.nav.short.workers', icon: 'users' },
+  { path: '/a/feedback', label: 'admin.nav.feedback', short: 'admin.nav.short.feedback', icon: 'feedback' },
 ];
 
 const PAGES: Record<string, () => VNode> = {
@@ -53,16 +53,18 @@ export default function AdminPage({ path }: { path: string }) {
             const current = section.path === path;
             return (
               <li key={section.path}>
-                <a href={`#${section.path}`} aria-current={current ? 'page' : undefined}>
-                  <Icon name={section.icon} size={20} />
-                  <span>{t(section.label)}</span>
+                <a href={`#${section.path}`} aria-current={current ? 'page' : undefined}
+                  aria-label={t(section.label)} title={t(section.label)}>
+                  <span class="nav-pill" aria-hidden="true"><Icon name={section.icon} size={20} /></span>
+                  <span class="admin-nav-label" aria-hidden="true">{t(section.label)}</span>
+                  <span class="admin-nav-short" aria-hidden="true">{t(section.short)}</span>
                 </a>
               </li>
             );
           })}
         </ul>
       </nav>
-      <div class="admin-content stack">
+      <div key={path} class="admin-content stack route-view">
         {render ? (
           render()
         ) : (

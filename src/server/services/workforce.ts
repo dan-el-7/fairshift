@@ -7,6 +7,7 @@ import { scoreQuitRisk } from '../domain/quitRisk';
 import { dayDiff, istDay, istMidnightMs } from '../domain/time';
 import type { Repo } from '../store/repo';
 import { countMonSat, lastDays } from './calendar';
+import { effectiveWork } from './corrections';
 
 const AT_RISK_SCORE = 30;
 
@@ -41,7 +42,8 @@ export async function buildWorkforce(repo: Repo, site: Site, now: Date): Promise
   const since = new Date(istMidnightMs(days[0] ?? today)).toISOString();
   const scheduledDays = countMonSat(days);
 
-  const shifts = await repo.listShifts({ siteId: site.id, since });
+  const work = await effectiveWork(repo, site.id);
+  const shifts = work.shifts.filter((s) => Date.parse(s.checkIn) >= Date.parse(since));
   const byWorker = new Map<string, Shift[]>();
   for (const shift of shifts) {
     const list = byWorker.get(shift.workerId) ?? [];

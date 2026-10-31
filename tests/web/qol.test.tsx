@@ -187,10 +187,10 @@ describe('LanguageSheet', () => {
     render(<Host />);
     const dialog = await openSheet();
     expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(dialog.textContent).toContain('Choose language · भाषा चुनें · மொழியைத் தேர்ந்தெடுக்கவும்');
-    expect(screen.getByRole('button', { name: 'हिन्दी' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'தமிழ்' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'English' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Language' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^हिन्दी/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^தமிழ்/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'English' })).toBeTruthy();
   });
 
   it('moves focus into the dialog and keeps Tab inside it', async () => {
@@ -198,7 +198,7 @@ describe('LanguageSheet', () => {
     const dialog = await openSheet();
     await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
 
-    const last = screen.getByRole('button', { name: 'தமிழ்' });
+    const last = screen.getByRole('button', { name: 'Use English' });
     last.focus();
     fireEvent.keyDown(dialog, { key: 'Tab' });
     expect(dialog.contains(document.activeElement)).toBe(true);
@@ -207,24 +207,41 @@ describe('LanguageSheet', () => {
     const first = screen.getByRole('button', { name: 'Close' });
     first.focus();
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'தமிழ்' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Use English' }));
   });
 
   it('Escape closes it and returns focus to the trigger', async () => {
     render(<Host />);
     const dialog = await openSheet();
+    expect(document.documentElement.style.overflow).toBe('hidden');
     fireEvent.keyDown(dialog, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open' }));
+    expect(document.documentElement.style.overflow).toBe('');
   });
 
-  it('choosing a language sets it explicitly and closes', async () => {
+  it('previews a choice and commits it only after explicit confirmation', async () => {
     render(<Host />);
     await openSheet();
-    fireEvent.click(screen.getByRole('button', { name: 'हिन्दी' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^हिन्दी/ }));
+    expect(getLang()).toBe('en');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: tIn('hi', 'language.use') }));
     expect(getLang()).toBe('hi');
     expect(window.localStorage.getItem('fairshift.lang')).toBe('hi');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.documentElement.style.overflow).toBe('');
+  });
+
+  it('closing discards the draft and restores the saved selection on reopening', async () => {
+    render(<Host />);
+    await openSheet();
+    fireEvent.click(screen.getByRole('radio', { name: /^தமிழ்/ }));
+    fireEvent.click(screen.getByRole('button', { name: tIn('en', 'common.close') }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(getLang()).toBe('en');
+    await openSheet();
+    expect(screen.getByRole('radio', { name: 'English' })).toHaveProperty('checked', true);
   });
 
   it('has no axe violations (colour contrast excluded)', async () => {

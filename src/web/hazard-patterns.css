@@ -1,0 +1,14 @@
+.hazard-patterns { margin-block: 1rem; }
+.hazard-patterns h2, .hazard-pattern-card h3 { margin: 0; }
+.hazard-pattern-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
+.hazard-pattern-card { display: flex; flex-direction: column; gap: .6rem; padding: 1rem; border: 1px solid var(--border, #d7dce2); border-radius: .8rem; background: var(--surface, #fff); }
+.hazard-pattern-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .7rem; }
+.hazard-pattern-kind { display: inline-block; margin-top: .35rem; font-size: .82rem; font-weight: 600; }
+.hazard-pattern-kind-repeating { color: var(--primary-strong-text, #3730a3); }
+.hazard-pattern-kind-persistent { color: var(--warning-text, #78350f); }
+.hazard-pattern-count { margin: .25rem 0 0; }
+.hazard-pattern-count strong { font-size: 1.35rem; }
+.hazard-pattern-card p { margin-block: 0; }
+.hazard-pattern-link { align-self: flex-start; margin-top: auto; }
+.hazard-pattern-note { margin: 0; font-weight: 600; }
+@media (max-width: 40rem) { .hazard-pattern-card { padding: .85rem; } }

@@ -66,14 +66,15 @@ describe('Onboarding first visit', () => {
   it('activating the hello step advances to the language step', async () => {
     renderOnboarding();
     await goToLanguageStep();
-    expect(screen.getByRole('button', { name: /^English/ })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^தமிழ்/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^English/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^தமிழ்/ })).toBeTruthy();
   });
 
   it('hello, then language, then closes with no intro slides', async () => {
     const { onDone } = renderOnboarding();
     await goToLanguageStep();
-    fireEvent.click(screen.getByRole('button', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('button', { name: i18n.tIn('en', 'language.continue') }));
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
     expect(localStorage.getItem('fairshift.onboarded')).toBe('1');
     expect(localStorage.getItem('fairshift.intro.worker')).toBeNull();
@@ -84,7 +85,9 @@ describe('Onboarding first visit', () => {
   it('choosing Tamil calls setLang with ta', async () => {
     const { onDone } = renderOnboarding();
     await goToLanguageStep();
-    fireEvent.click(screen.getByRole('button', { name: /^தமிழ்/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^தமிழ்/ }));
+    expect(i18n.setLang).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: i18n.tIn('ta', 'language.continue') }));
     expect(i18n.setLang).toHaveBeenCalledWith('ta');
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
   });
@@ -139,7 +142,8 @@ describe('Onboarding role intro', () => {
   it('with greet, the intro runs the full flow: hello, language, then the role slides', async () => {
     renderOnboarding({ mode: 'intro', role: 'worker', greet: true });
     await goToLanguageStep();
-    fireEvent.click(screen.getByRole('button', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('button', { name: i18n.tIn('en', 'language.continue') }));
     expect(await screen.findByRole('heading', { name: WORKER_1 })).toBeTruthy();
     // Back from the first slide returns to the language step.
     expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
@@ -203,14 +207,16 @@ describe('Onboarding replay (#/welcome)', () => {
   it('replay with a role goes hello, language, then that role slides', async () => {
     renderOnboarding({ mode: 'replay', role: 'admin' });
     await goToLanguageStep();
-    fireEvent.click(screen.getByRole('button', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('button', { name: i18n.tIn('en', 'language.continue') }));
     expect(await screen.findByRole('heading', { name: ADMIN_1 })).toBeTruthy();
   });
 
   it('replay without a role closes after the language step', async () => {
     const { onDone } = renderOnboarding({ mode: 'replay' });
     await goToLanguageStep();
-    fireEvent.click(screen.getByRole('button', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /^English/ }));
+    fireEvent.click(screen.getByRole('button', { name: i18n.tIn('en', 'language.continue') }));
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
     expect(screen.queryByText(ADMIN_1)).toBeNull();
   });

@@ -1,0 +1,23 @@
+.payment-card { gap: 1rem; }
+.payment-heading, .payment-totals > div, .payment-records li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-width: 0; }
+.payment-heading h2 { margin: 0; }
+.payment-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .8rem; margin: 0; }
+.payment-totals > div { display: grid; gap: .35rem; padding: .8rem; border-radius: .75rem; background: var(--surface-2, #f4f6f8); }
+.payment-totals dd { margin: 0; font-weight: 700; font-size: 1.1rem; }
+.payment-records { list-style: none; padding: 0; margin: 0; }
+.payment-records li { padding: 1rem 0; border-top: 1px solid var(--border, #ddd); }
+.payment-records p { margin: .25rem 0; }
+.payment-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
+.payment-status { font-weight: 600; }
+.payment-card p, .payment-records li { overflow-wrap: anywhere; }
+.payment-records li > div { min-width: 0; }
+.payment-ledger { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 1rem; }
+@media (max-width: 600px) {
+  .payment-heading { align-items: flex-start; flex-wrap: wrap; }
+  .payment-totals { grid-template-columns: 1fr; }
+  .payment-totals > div { display: flex; align-items: flex-start; }
+  .payment-totals dt { max-width: 60%; }
+  .payment-totals dd { text-align: right; }
+  .payment-records li { align-items: flex-start; flex-direction: column; }
+}
+@media print { .payment-card .btn, .payment-buttons { display: none; } }

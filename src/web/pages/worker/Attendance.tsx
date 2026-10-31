@@ -84,11 +84,14 @@ interface CheckInCardProps {
 }
 
 function CheckInCard({ open, busy, modes, onCheckIn, onCheckOut, onLocate, onCameraDenied }: CheckInCardProps) {
-  const [mode, setMode] = useState<Mode>(modes[0] ?? 'geo');
+  const canScan = scannerSupport() !== null;
+  const [mode, setMode] = useState<Mode>(() => {
+    const initial = modes[0] ?? 'geo';
+    return initial === 'scan' && !canScan ? 'code' : initial;
+  });
   const [scanning, setScanning] = useState(false);
   const [code, setCode] = useState('');
   const codeRef = useRef<HTMLInputElement>(null);
-  const canScan = scannerSupport() !== null;
 
   const openText = open ? t('attendance.openSince', { time: formatTime(open.checkIn) }) : t('home.notCheckedIn');
   const modeLabel: Record<Mode, string> = {
@@ -156,18 +159,22 @@ function CheckInCard({ open, busy, modes, onCheckIn, onCheckOut, onLocate, onCam
       ) : null}
 
       {!open ? (
-        <MethodPanel
-          mode={mode}
-          busy={busy}
-          scanning={scanning}
-          setScanning={setScanning}
-          code={code}
-          setCode={setCode}
-          codeRef={codeRef}
-          onCheckIn={onCheckIn}
-          onCameraDenied={onCameraDenied}
-          onLocate={onLocate}
-        />
+        <>
+          {mode === 'code' && !canScan ? <p class="muted">{t('attendance.noScanner')}</p> : null}
+          <MethodPanel
+            mode={mode}
+            busy={busy}
+            scanning={scanning}
+            setScanning={setScanning}
+            code={code}
+            setCode={setCode}
+            codeRef={codeRef}
+            onCheckIn={onCheckIn}
+            onCameraDenied={onCameraDenied}
+            onFallback={() => setMode('code')}
+            onLocate={onLocate}
+          />
+        </>
       ) : null}
     </section>
   );

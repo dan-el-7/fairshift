@@ -8,6 +8,7 @@ import { t, type TKey } from '../../i18n';
 import { LIVE_REFRESH_MS, useApiData } from '../../useApiData';
 import { RiskCell } from './RiskCell';
 import { SEVERITIES } from './shared';
+import HazardPatterns from './HazardPatterns';
 
 type Series = AdminOverview['attendance14d'];
 
@@ -61,15 +62,20 @@ function AttendanceChart({ series }: { series: Series }) {
   );
 }
 
-function Kpi({ label, value, icon }: { label: string; value: number | string; icon: IconName }) {
-  return (
-    <div class="card kpi">
+function Kpi({ label, value, icon, href }: { label: string; value: number | string; icon: IconName; href?: string }) {
+  const content = (
+    <>
       <span class="kpi-icon" aria-hidden="true">
         <Icon name={icon} size={20} />
       </span>
       <span class="kpi-label">{label}</span>
       <strong class="kpi-value">{value}</strong>
-    </div>
+    </>
+  );
+  return href ? (
+    <a class="card kpi kpi-link" href={href}>{content}</a>
+  ) : (
+    <div class="card kpi">{content}</div>
   );
 }
 
@@ -77,8 +83,8 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
   if (workers.length === 0) return <p class="muted">{t('admin.atRisk.none')}</p>;
   const sorted = [...workers].sort((a, b) => b.quitRisk.score - a.quitRisk.score);
   return (
-    <div class="table-wrap">
-      <table class="table">
+    <div class="table-wrap risk-table-wrap" tabIndex={0}>
+      <table class="table risk-table" role="table">
         <caption class="visually-hidden">{t('admin.atRisk.title')}</caption>
         <thead>
           <tr>
@@ -89,15 +95,21 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
             <th scope="col">{t('admin.col.fatigue')}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {sorted.map((worker) => (
-            <tr key={worker.id}>
-              <th scope="row">{worker.name}</th>
-              <td>{worker.jobTitle}</td>
-              <td>
-                <RiskCell level={worker.quitRisk.level} score={worker.quitRisk.score} />
+            <tr key={worker.id} role="row">
+              <th scope="row" role="rowheader">{worker.name}</th>
+              <td role="cell">
+                <span class="risk-field-label" aria-hidden="true">{t('admin.col.job')}</span>
+                <div class="risk-value">{worker.jobTitle}</div>
               </td>
-              <td>
+              <td role="cell">
+                <span class="risk-field-label" aria-hidden="true">{t('admin.col.risk')}</span>
+                <div class="risk-value"><RiskCell level={worker.quitRisk.level} score={worker.quitRisk.score} /></div>
+              </td>
+              <td role="cell">
+                <span class="risk-field-label" aria-hidden="true">{t('admin.col.factors')}</span>
+                <div class="risk-value">
                 <ul class="tag-list">
                   {worker.quitRisk.factors.map((factor) => (
                     <li key={factor.factor}>
@@ -108,8 +120,11 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
                     </li>
                   ))}
                 </ul>
+                </div>
               </td>
-              <td>
+              <td role="cell">
+                <span class="risk-field-label" aria-hidden="true">{t('admin.col.fatigue')}</span>
+                <div class="risk-value">
                 {worker.fatigue.length === 0 ? (
                   '—'
                 ) : (
@@ -121,12 +136,52 @@ function AtRiskTable({ workers }: { workers: WorkerSummary[] }) {
                     ))}
                   </ul>
                 )}
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function OverviewKpis({ data }: { data: AdminOverview }) {
+  return (
+    <>
+      <section class="stack" aria-labelledby="attention-title">
+        <h2 id="attention-title">{t('admin.attention.title')}</h2>
+        <div class="kpi-grid overview-attention">
+          <Kpi label={t('admin.kpi.overdueReports')} value={data.kpis.overdueReports} icon="alert" href="#/a/reports?filter=overdue" />
+          <Kpi label={t('admin.kpi.openReports')} value={data.kpis.openReports} icon="file" href="#/a/reports?filter=unresolved" />
+          <Kpi label={t('admin.kpi.fatigueAlerts')} value={data.kpis.fatigueAlerts} icon="bolt" href="#/a/workers?filter=fatigue" />
+          <Kpi label={t('admin.kpi.highRiskWorkers')} value={data.kpis.highRiskWorkers} icon="chart" href="#/a/workers?filter=high-risk" />
+        </div>
+      </section>
+      <div class="kpi-grid overview-summary">
+        <Kpi label={t('admin.kpi.workers')} value={data.kpis.workers} icon="users" href="#/a/workers?filter=all" />
+        <Kpi label={t('admin.kpi.presentToday')} value={data.kpis.presentToday} icon="checkin" />
+        <Kpi label={t('admin.kpi.overtime14d')} value={data.kpis.overtimeHours14d} icon="clock" />
+      </div>
+    </>
+  );
+}
+
+function PriorityCounts({ counts }: { counts: AdminOverview['reportsBySeverity'] }) {
+  return (
+    <section class="card stack" aria-labelledby="severity-title">
+      <h2 id="severity-title">{t('admin.severity.all')}</h2>
+      <ul class="inline-list">
+        {SEVERITIES.map((severity) => (
+          <li key={severity}>
+            <a class="priority-link row" href={`#/a/reports?filter=all&severity=${severity}`}>
+              <SeverityBadge severity={severity} />
+              <span>{counts[severity]}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -161,17 +216,11 @@ export default function Dashboard() {
         <>
           <p class="muted">{t('home.site', { site: data.site.name })}</p>
 
-          <div class="kpi-grid">
-            <Kpi label={t('admin.kpi.workers')} value={data.kpis.workers} icon="users" />
-            <Kpi label={t('admin.kpi.presentToday')} value={data.kpis.presentToday} icon="checkin" />
-            <Kpi label={t('admin.kpi.overtime14d')} value={data.kpis.overtimeHours14d} icon="clock" />
-            <Kpi label={t('admin.kpi.openReports')} value={data.kpis.openReports} icon="file" />
-            <Kpi label={t('admin.kpi.overdueReports')} value={data.kpis.overdueReports} icon="alert" />
-            <Kpi label={t('admin.kpi.fatigueAlerts')} value={data.kpis.fatigueAlerts} icon="bolt" />
-            <Kpi label={t('admin.kpi.highRiskWorkers')} value={data.kpis.highRiskWorkers} icon="chart" />
-          </div>
+          <OverviewKpis data={data} />
+          <HazardPatterns />
+          <PriorityCounts counts={data.reportsBySeverity} />
 
-          <section class="card stack" aria-labelledby="chart-title">
+          <section class="card stack attendance-chart-card" aria-labelledby="chart-title">
             <h2 id="chart-title">{t('admin.chart.title')}</h2>
             <AttendanceChart series={data.attendance14d} />
             {/* Hidden via a wrapper: a table keeps its intrinsic width even when clipped. */}
@@ -198,23 +247,7 @@ export default function Dashboard() {
             </div>
           </section>
 
-          <section class="card stack" aria-labelledby="severity-title">
-            <h2 id="severity-title">{t('admin.severity.title')}</h2>
-            <ul class="inline-list">
-              {SEVERITIES.map((severity) => {
-                // Typed as always present; a count the server omitted still shows as 0.
-                const count = data.reportsBySeverity[severity] as number | undefined;
-                return (
-                  <li key={severity}>
-                    <SeverityBadge severity={severity} />
-                    <span>{count ?? 0}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          <section class="card stack" aria-labelledby="risk-title">
+          <section class="card stack risk-panel" aria-labelledby="risk-title">
             <h2 id="risk-title">{t('admin.atRisk.title')}</h2>
             <AtRiskTable workers={data.atRisk} />
             <p class="muted">{t('admin.atRisk.note')}</p>

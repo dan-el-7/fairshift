@@ -102,6 +102,11 @@ export default function Feedback(_props: { me: Me }) {
                 );
               })}
             </div>
+            <div class="rating-caption" aria-hidden="true">
+              <span>{t('feedback.scale.1')}</span>
+              <strong>{ratings[dimension] ? t(`feedback.scale.${ratings[dimension]}` as TKey) : ''}</strong>
+              <span>{t('feedback.scale.5')}</span>
+            </div>
           </fieldset>
         );
       })}

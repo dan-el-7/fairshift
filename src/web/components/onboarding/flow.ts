@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Language, Role } from '../../../shared/types';
-import { setLang } from '../../i18n';
-import { CHOOSE_MS, EXIT_MS, FOCUSABLE, GREET_MS, ORDER, SWIPE_PX } from './content';
+import { getLang, setLang } from '../../i18n';
+import { hasExplicitChoice } from '../../langDetect';
+import { EXIT_MS, FOCUSABLE, GREET_MS, ORDER, SWIPE_PX } from './content';
 import { markIntroSeen, markOnboarded } from './storage';
 
 /**
@@ -76,9 +77,10 @@ function useWindowKeydown(handler: (event: KeyboardEvent) => void): void {
 
 /** Greeting cycle. Only the outgoing and incoming greetings animate; reduced motion shows all three statically. */
 function useGreeting(reduce: boolean, step: Step) {
-  const [greet, setGreet] = useState(0);
+  const initial = ORDER.indexOf(getLang());
+  const [greet, setGreet] = useState(initial);
   const [greetPrev, setGreetPrev] = useState<number | null>(null);
-  const greetRef = useRef(0);
+  const greetRef = useRef(initial);
   useEffect(() => {
     if (reduce || step !== 'hello') return undefined;
     const id = setInterval(() => {
@@ -118,16 +120,13 @@ function useSwipe(onNext: () => void, onPrev: () => void) {
 export function useOnboardingFlow({ mode, slideRole, slideCount, openWithHello, onDone }: FlowOptions) {
   const [reduce] = useState<boolean>(prefersReducedMotion);
   const [step, setStep] = useState<Step>(mode === 'intro' && slideRole && !openWithHello ? 'slides' : 'hello');
-  const [picked, setPicked] = useState<Language | null>(navigatorLanguage);
-  const [pressed, setPressed] = useState<Language | null>(null);
+  const [picked, setPicked] = useState<Language | null>(() => hasExplicitChoice() ? getLang() : navigatorLanguage());
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const [exiting, setExiting] = useState(false);
   const { greet, greetPrev } = useGreeting(reduce, step);
 
   const dialogRef = useRef<HTMLDivElement>(null);
-  const armedRef = useRef(false);
-  const busyRef = useRef(false);
   const exitingRef = useRef(false);
   const timersRef = useRef<number[]>([]);
 
@@ -153,22 +152,17 @@ export function useOnboardingFlow({ mode, slideRole, slideCount, openWithHello, 
   };
 
   const choose = (lang: Language) => {
-    if (busyRef.current || exitingRef.current) return;
-    busyRef.current = true;
-    setLang(lang);
+    if (exitingRef.current) return;
     setPicked(lang);
-    setPressed(lang);
-    later(() => {
-      setPressed(null);
-      busyRef.current = false;
-      if (slideRole) {
-        setDir(1);
-        setIndex(0);
-        setStep('slides');
-      } else {
-        complete();
-      }
-    }, CHOOSE_MS);
+  };
+  const confirmLanguage = () => {
+    if (exitingRef.current) return;
+    setLang(picked ?? getLang());
+    if (slideRole) {
+      setDir(1);
+      setIndex(0);
+      setStep('slides');
+    } else complete();
   };
 
   const goNext = () => {
@@ -192,7 +186,6 @@ export function useOnboardingFlow({ mode, slideRole, slideCount, openWithHello, 
   // Keyboard handling sits on the window so it works wherever focus is.
   useWindowKeydown((event: KeyboardEvent) => {
     if (exitingRef.current) return;
-    armedRef.current = true;
     if (event.key === 'Escape') {
       event.preventDefault();
       complete();
@@ -226,19 +219,15 @@ export function useOnboardingFlow({ mode, slideRole, slideCount, openWithHello, 
     step,
     setStep,
     picked,
-    pressed,
     index,
     dir,
     greet,
     greetPrev,
     exiting,
     dialogRef,
-    armedRef,
-    arm: () => {
-      armedRef.current = true;
-    },
     complete,
     choose,
+    confirmLanguage,
     primary,
     back,
     canBack,

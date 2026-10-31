@@ -55,6 +55,7 @@ export interface CreateReportResponse {
   caseCode: string;
   category: string;
   severity: Severity;
+  reporterToken: string;
 }
 
 /** What anyone holding the case code may see. */
@@ -63,8 +64,21 @@ export type ReportPublic = Pick<
   'caseCode' | 'category' | 'severity' | 'status' | 'createdDay' | 'updates'
 >;
 
-export interface ReportAdmin extends Report {
+export interface ReportAdmin extends Omit<Report, 'reporterSecretHash'> {
   overdue: boolean;
+}
+
+export interface ReportTrackResponse extends ReportPublic {
+  version: number;
+  confirmationAvailable: boolean;
+  fixResponse?: 'confirmed' | 'disputed';
+}
+
+export interface ReportResponseRequest {
+  reporterToken: string;
+  decision: 'confirmed' | 'disputed';
+  expectedVersion: number;
+  note?: string;
 }
 
 export interface FeedbackRequest {
